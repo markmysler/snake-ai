@@ -112,7 +112,8 @@ export function mount(main, focusId, app) {
         i.why ? h("p", { class: "small ink2" }, h("b", {}, "Why: "), i.why) : null,
         i.expected ? h("p", { class: "small ink2" }, h("b", {}, "Expected: "), i.expected) : null,
         i.note ? h("p", { class: "small muted" }, i.note) : null,
-        h("p", { class: "small muted" }, "From ", h("a", { href: `#watch/${i.source.run}` }, i.source.run), ` · ${fmtDate(i.created)}`,
+        h("p", { class: "small muted" }, i.source.run ? ["From ", h("a", { href: `#watch/${i.source.run}` }, i.source.run)]
+          : "From a run that was deleted", ` · ${fmtDate(i.created)}`,
           i.review ? ` · reviewed ${i.review}` : ""))))
         : h("p", { class: "muted" }, view.filter === "open" ? "No open ideas." : "None here."));
   }

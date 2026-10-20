@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+import ideas  # noqa: E402
 import lessons  # noqa: E402
 import runconfig  # noqa: E402
 from policies import load_policy, mlp_param_count  # noqa: E402
@@ -16,6 +17,7 @@ from vision import state_size  # noqa: E402
 @pytest.fixture(autouse=True)
 def tmp_lessons(tmp_path, monkeypatch):
     monkeypatch.setattr(lessons, "LESSONS_DIR", str(tmp_path))
+    monkeypatch.setattr(ideas, "IDEAS_DIR", str(tmp_path / "ideas"))
     return tmp_path
 
 
@@ -91,3 +93,21 @@ def test_scrub_keeps_only_what_results_need(tmp_lessons):
     assert raw["machine"] == {"cpus": 8, "on_battery": False}
     assert raw["plan"]["agents"]["dqn"] == {"algorithm": "dqn", "cores": 1, "flag": "threads", "params": {"buffer": 50000}}
     assert lessons.scrub(verbose=False) == [], "nothing left to scrub"
+
+
+def test_deleting_a_run_removes_links_to_it(tmp_lessons):
+    src = lessons.new_run(runconfig.normalize({"lesson": "a", "agents": ["ga"]}), status="finished")
+    src_id = lessons.read_run(src)["id"]
+    child = lessons.new_run(runconfig.normalize({"lesson": "b", "agents": ["ga"]}), status="finished",
+                            parent={"run": src_id, "recommendation": 0, "title": "Try rays"})
+    child_id = lessons.read_run(child)["id"]
+    lessons.write_json(os.path.join(child, "analysis.json"),
+                       {"state": "done", "recommendations": [{"title": "x", "launched": [src_id, "b/other"]}]})
+    ideas.add_from_analysis(src_id, [{"title": "An idea", "kind": "vision"}], "m", "now")
+    lessons.delete_run(src_id)
+    assert lessons.read_run(child)["parent"] == {"run": None, "recommendation": 0, "title": "Try rays", "deleted": True}
+    assert lessons.read_json(os.path.join(child, "analysis.json"))["recommendations"][0]["launched"] == ["b/other"]
+    idea = ideas.load()[0]
+    assert idea["title"] == "An idea" and idea["source"]["run"] is None and idea["source"]["deleted"]
+    assert "source run was deleted" in (tmp_lessons / "ideas" / "IDEAS.md").read_text(encoding="utf-8")
+    assert child_id

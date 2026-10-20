@@ -270,7 +270,8 @@ def write_markdown(items=None):
         lines += [f"## {status.capitalize()} ({len(group)})", ""]
         for i in group:
             lines.append(f"- **{i['id']} · {_md(i['title'])}** ({i['kind']}, {i['effort']}) {_md(i['what'])} "
-                         f"_Why:_ {_md(i['why'])} _From run_ `{i['source']['run']}`.")
+                         f"_Why:_ {_md(i['why'])} " + (f"_From run_ `{i['source']['run']}`." if i["source"].get("run")
+                                                         else "_Its source run was deleted._"))
         lines.append("")
     os.makedirs(IDEAS_DIR, exist_ok=True)
     with open(_path("IDEAS.md"), "w", encoding="utf-8") as f:
@@ -291,7 +292,7 @@ def main():
         stream.reconfigure(encoding="utf-8", errors="replace")
     if a.cmd == "list":
         for i in load():
-            print(f"{i['id']:9s} {i['status']:9s} {i['kind']:10s} {i['effort']:6s} {i['title']}  (from {i['source']['run']})")
+            print(f"{i['id']:9s} {i['status']:9s} {i['kind']:10s} {i['effort']:6s} {i['title']}  (from {i['source'].get('run') or 'a deleted run'})")
     elif a.cmd == "review":
         try:
             rev = review(verbose=True)

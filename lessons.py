@@ -275,12 +275,37 @@ def delete_run(run_id):
         raise ValueError("stop the run before deleting it")
     shutil.rmtree(run_dir)
     shutil.rmtree(live_dir(info["id"]), ignore_errors=True)
+    forget_run(info["id"])
     lesson_dir = os.path.join(LESSONS_DIR, info["lesson"])
     if not glob.glob(os.path.join(lesson_dir, "runs", "*", "run.json")) and lesson_untouched(info["lesson"]):
         shutil.rmtree(lesson_dir)  # nothing left and nothing written by hand
     else:
         update_lesson(info["lesson"])
     write_index()
+
+
+def forget_run(run_id):
+    """Remove links to a deleted run, keeping what they said: runs it recommended keep the recommendation
+    (without the link), "launched as" lists drop it, and ideas it proposed say their source was deleted."""
+    for path in glob.glob(os.path.join(LESSONS_DIR, "*", "runs", "*", "run.json")):
+        raw = read_json(path)
+        if raw and (raw.get("parent") or {}).get("run") == run_id:
+            raw["parent"] = {**raw["parent"], "run": None, "deleted": True}
+            write_json(path, raw)
+    for path in glob.glob(os.path.join(LESSONS_DIR, "*", "runs", "*", "analysis.json")):
+        raw = read_json(path)
+        recs = (raw or {}).get("recommendations") or []
+        if any(run_id in r.get("launched", []) for r in recs):
+            for r in recs:
+                r["launched"] = [x for x in r.get("launched", []) if x != run_id]
+            write_json(path, raw)
+    import ideas  # (ideas imports lessons)
+    items = ideas.load()
+    if any(i["source"].get("run") == run_id for i in items):
+        for i in items:
+            if i["source"].get("run") == run_id:
+                i["source"] = {**i["source"], "run": None, "deleted": True}
+        ideas.save(items)
 
 
 def lesson_untouched(lesson):

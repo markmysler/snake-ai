@@ -17,6 +17,8 @@ def client(tmp_path, monkeypatch):
     shutil.copytree(os.path.join(REAL, "01-short-vision"), tmp_path / "01-short-vision")
     monkeypatch.setattr(lessons, "LESSONS_DIR", str(tmp_path))
     monkeypatch.setenv("SNAKE_AI_LESSONS", str(tmp_path))
+    import ideas
+    monkeypatch.setattr(ideas, "IDEAS_DIR", str(tmp_path / "ideas"))
     from dashboard.server import create_app
     return TestClient(create_app(parallel=0))  # parallel=0: queued runs are never started
 

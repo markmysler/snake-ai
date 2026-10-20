@@ -57,8 +57,9 @@ export function mount(main, runId, app) {
         h("span", { class: "chip" }, `grid ${run.config.width}×${run.config.height} · seed ${run.config.seed}`),
         run.machine.cpus ? h("span", { class: "chip" }, `${run.machine.cpus} CPUs${run.machine.on_battery ? " · on battery" : ""}`) : null,
         run.auto_analyze && ["queued", "running"].includes(run.status) ? h("span", { class: "chip" }, "AI analysis when it ends") : null,
-        run.parent ? h("a", { class: "chip", href: `#watch/${run.parent.run}`, title: "This run was recommended by the AI analysis of another run" },
-          "recommended by ", h("b", {}, run.parent.run)) : null),
+        run.parent?.run ? h("a", { class: "chip", href: `#watch/${run.parent.run}`, title: "This run was recommended by the AI analysis of another run" },
+          "recommended by ", h("b", {}, run.parent.run))
+          : run.parent ? h("span", { class: "chip", title: run.parent.title }, "recommended by a run that was deleted") : null),
       run.note ? h("p", { class: "ink2" }, run.note) : null,
       run.budget_min && run.status !== "queued" ? h("div", { class: "meter-row" }, h("span", {}, "Time used"),
         h("div", { class: "meter" }, h("i", { style: { width: `${pct}%` } })),
