@@ -55,7 +55,7 @@ def run(tmp_path, monkeypatch, *args):
 def test_a_run_plays_the_test_games_and_replays_exactly(tmp_path, monkeypatch):
     path = run(tmp_path, monkeypatch, "--games", "3", "--max-cost", "5")
     data = json.load(open(path))
-    assert len(data["games"]) == 3 and data["unfinished"] == 0 and data["cost_usd"] > 0
+    assert len(data["games"]) == 3 and data["unfinished"] == [] and data["cost_usd"] > 0
     ev = evaluate(path)
     assert ev["games"] == 3 and sum(ev["outcomes"].values()) == 3  # its own games are its test
     act, meta = load_policy(path)
@@ -81,3 +81,29 @@ def test_recipe_checks(monkeypatch):
     monkeypatch.setattr(jev, "configured", lambda: True)
     assert not runconfig.validate({**cfg, "time_budget_min": 0})[1]
     assert jev.estimate(20)["usd"] < 0.1
+
+
+def test_an_outage_is_waited_out_and_unfinished_games_are_kept(tmp_path, monkeypatch):
+    calls = {"n": 0}
+
+    def flaky(boards, prompt="rules"):
+        calls["n"] += 1
+        if calls["n"] in (3, 4):  # the API stops answering for a while
+            raise jev.JevError("Could not reach jev: The read operation timed out")
+        return safe_player(boards, prompt)
+
+    monkeypatch.setattr(train_jev.time, "sleep", lambda s: None)
+    monkeypatch.setattr(jev, "decide", flaky)
+    monkeypatch.setattr(sys, "argv", ["train_jev.py", "--games", "2", "--live-dir", str(tmp_path / "live"),
+                                      "--results-dir", str(tmp_path / "results"), "--models-dir", str(tmp_path / "models")])
+    train_jev.main()
+    data = json.load(open(tmp_path / "models" / "jev_best.json"))
+    assert len(data["games"]) == 2 and data["stopped"] is None  # the outage didn't end the run
+
+    def dead(boards, prompt="rules"):
+        raise jev.JevError("jev request failed (401): bad key")
+
+    monkeypatch.setattr(jev, "decide", dead)
+    monkeypatch.setattr(sys, "argv", [*sys.argv[:-2], "--models-dir", str(tmp_path / "models2")])
+    train_jev.main()  # a refused request ends the run at once, with nothing played
+    assert not (tmp_path / "models2" / "jev_best.json").exists()

@@ -8,7 +8,9 @@ on every unfinished board. Its moves and how sure it was of each are saved in mo
 dashboard replays and inspects these games without calling jev again.
 
 The learning curve is the mean score of the games finished so far. --max-cost stops the run before it spends
-more than that (USD); a time budget stops it too. Games still running then are left out of the result.
+more than that (USD); a time budget stops it too. Games still running then are left out of the result (their
+progress is kept in the model file as "unfinished"). The decisions API is in alpha: when it stops answering, the run
+waits and asks again (no game moves until it has an answer) for up to --max-outage minutes before giving up.
 """
 import argparse
 import json
@@ -35,6 +37,7 @@ def parse_args():
     p.add_argument("--batch", type=int, default=100, help="boards per request")
     p.add_argument("--prompt", choices=tuple(jev.PROMPTS), default="rules", help="the instructions jev gets")
     p.add_argument("--max-cost", type=float, default=0.5, help="stop before spending more than this (USD)")
+    p.add_argument("--max-outage", type=float, default=15, help="minutes to keep retrying while jev doesn't answer")
     p.add_argument("--threads", type=int, default=1, help="(accepted for the planner; requests are sequential)")
     p.add_argument("--time-budget", type=float, default=0, help="minutes, 0 = none")
     p.add_argument("--width", type=int, default=10)
@@ -75,10 +78,25 @@ def main():
     meta = {"kind": "jev", "model": s["model"], "prompt": args.prompt, "vision": vision, "width": args.width,
             "height": args.height, "reward": reward}
 
+    def ask(chunk):
+        """jev's moves for these boards, waiting out an outage of up to --max-outage minutes."""
+        boards = {str(g["seed"]): jev.describe(vision, g["env"], g["state"]) for g in chunk}
+        down_since = None
+        while True:
+            try:
+                return jev.decide(boards, prompt=args.prompt)
+            except jev.JevError as e:
+                down_since = down_since or time.time()
+                if "failed (4" in str(e) and "(429)" not in str(e) or time.time() - down_since > args.max_outage * 60:
+                    raise  # a refused request (bad key, bad request) or too long an outage
+                print(f"[{args.agent}] {e}; asking again in 30 s", flush=True)
+                time.sleep(30)
+
     def save():
         recorded = [{k: g[k] for k in ("seed", "actions", "probs", "score", "steps", "end")} for g in done]
         out = {**meta, "games": recorded, "evaluation": evaluation(done) if done else None, "cost_usd": round(cost, 5),
-               "unfinished": sum(not g["done"] for g in games), "stopped": stopped}
+               "unfinished": [{"seed": g["seed"], "moves": len(g["actions"]), "score": g["env"].score}
+                              for g in games if not g["done"]], "stopped": stopped}
         write_json(os.path.join(args.models_dir, f"{args.agent}_best.json"), out)
         info = {k: v for k, v in out.items() if k != "games"}
         pub.weights(lambda f: f.write(json.dumps(out).encode()), "json", moves, **info)
@@ -99,8 +117,7 @@ def main():
                 break
             for start in range(0, len(active), max(1, args.batch)):
                 chunk = active[start:start + args.batch]
-                answers, c = jev.decide({str(g["seed"]): jev.describe(vision, g["env"], g["state"]) for g in chunk},
-                                        prompt=args.prompt)
+                answers, c = ask(chunk)
                 cost += c
                 for g in chunk:
                     action, probs = answers[str(g["seed"])]
@@ -130,7 +147,7 @@ def main():
     except KeyboardInterrupt:
         stopped = "interrupted"
     finally:
-        if done:
+        if done or any(g["actions"] for g in games):
             save()
         pub.finish()
     print(f"[{args.agent}] done: {len(done)} of {len(games)} games, ${cost:.4f}" + (f" ({stopped})" if stopped else ""),
