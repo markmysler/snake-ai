@@ -18,7 +18,8 @@ from publisher import read_json
 
 HISTORY_KEYS = ["elapsed_s", "total_steps", "total_games", "best_score",
                 "mean_score_100", "steps_per_sec", "iteration",
-                "end_wall", "end_body", "end_starved", "end_won"]  # (ends: None in runs recorded before them)
+                "end_wall", "end_body", "end_starved", "end_won",  # (ends: None in runs recorded before them)
+                "pop_mean_score", "pop_end_wall", "pop_end_body", "pop_end_starved", "pop_end_won"]  # GA only, newer runs
 KEEP_VERSIONS = 64  # old versions stay loaded so frozen boards can keep playing them
 KEEP_POPULATIONS = 4
 META_KEYS = ("version", "iteration", "iteration_label", "vision", "width", "height",

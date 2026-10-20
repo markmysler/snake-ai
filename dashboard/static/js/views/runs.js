@@ -1,4 +1,6 @@
-// Runs: the library. Active runs first, then every saved run grouped by lesson.
+// Runs: the library. Active runs first, then the course (its lessons in order, with what is trained and its
+// exercises), then every other saved run grouped by lesson (the notebook).
+import { termChip } from "../components/glossary.js";
 import { fmtSpread, spreadOf } from "../components/spread.js";
 import { agentLabel, api, closeDialog, confirmDialog, fmtDate, fmtDuration, fmtMB, h, openDialog, q,
          runTitle, statusPill, toast } from "../util.js";
@@ -59,7 +61,7 @@ export function mount(main, _param, app) {
       toast(`Up to ${app.queue.concurrency} run(s) will train at the same time.`);
       app.refreshRuns();
     } }, Array.from({ length: Math.min(8, s.cpus) }, (_, i) => h("option", { value: i + 1, selected: i + 1 === app.queue.concurrency }, i + 1)));
-    machine.replaceChildren(h("details", { class: "card" },
+    machine.replaceChildren(h("details", { class: "card", id: "machine-card" },
       h("summary", {}, "This machine ", h("span", { class: "muted" },
         `${s.cpus} CPU cores · ${fmtMB(s.ram_total_mb)} RAM, ${fmtMB(s.ram_available_mb)} free`
         + (s.on_battery ? " · on battery (slower)" : ""))),
@@ -78,32 +80,118 @@ export function mount(main, _param, app) {
     return text.includes(state.search);
   }
 
+  const course = app.catalog.course;
+  const courseLessons = new Set((course?.lessons || []).map((e) => e.lesson));
+  const filtering = () => state.search || state.lesson || state.status;
+
+  function runsTable(lr) {
+    return h("div", { class: "table-scroll" }, h("table", { class: "runs-table" },
+      h("thead", {}, h("tr", {}, h("th", {}, h("span", { class: "hidden" }, "Compare")), h("th", {}, "Run"),
+        h("th", {}, "Status"), h("th", {}, "Vision"), h("th", {}, "Reward"),
+        h("th", {}, "Eval (mean apples, 100 games)"), h("th", {}, "Time"), h("th", { class: "r" }, "Actions"))),
+      h("tbody", {}, rowsFor(lr))));
+  }
+
+  function lessonCard(lesson, lr) {
+    return h("section", { class: "card" },
+      h("div", { class: "section-head" },
+        h("div", { class: "lesson-head" }, h("h2", {}, lr[0].lesson_title), h("span", { class: "muted small" },
+          `${lesson} · ${lr.length} run${lr.length > 1 ? "s" : ""}`)),
+        h("button", { onclick: () => readLesson(lesson) }, "Read lesson")),
+      runsTable(lr));
+  }
+
+  // ---- the course ----
+  const DONE = ["finished", "stopped"], ACTIVE = ["queued", "running"];
+  const recipeRuns = (lesson, name) => app.runs.filter((r) => r.lesson === lesson && r.course?.recipe === name && !r.course.trial);
+  const latestGroupFirst = (rs) => {  // the first seed of the newest finished group (or run) of a recipe
+    const done = rs.filter((r) => DONE.includes(r.status));
+    if (!done.length) return null;
+    const last = done.at(-1), gid = last.group?.id;
+    return gid ? done.filter((r) => r.group?.id === gid).sort((a, b) => a.group.index - b.group.index)[0] : last;
+  };
+
+  function compareIds(entry) {
+    const ids = [];
+    if (entry.compare) {
+      const [lesson, ...name] = entry.compare.split("/");
+      const base = latestGroupFirst(recipeRuns(lesson, name.join("/")));
+      if (base) ids.push(base.id);
+    }
+    for (const rc of entry.recipes) {
+      const r = latestGroupFirst(recipeRuns(entry.lesson, rc.name));
+      if (r) ids.push(r.id);
+    }
+    return ids.slice(0, app.maxCompare);
+  }
+
+  async function train(entry, button) {
+    button.disabled = true;
+    try {
+      const res = await api.post(`/api/course/run?lesson=${q(entry.lesson)}`);
+      toast(res.queued ? `Queued ${res.queued} run(s) for “${entry.title}”. They train ${app.queue.concurrency} at a time.`
+        : "Every recipe of this lesson already has runs.");
+      await app.refreshRuns();
+    } catch (e) { toast(e.message); button.disabled = false; }
+  }
+
+  function courseCard(entry, lr) {
+    const recipes = entry.recipes.map((rc) => {
+      const rs = recipeRuns(entry.lesson, rc.name);
+      return { rc, done: rs.filter((r) => DONE.includes(r.status)).length, active: rs.filter((r) => ACTIVE.includes(r.status)).length };
+    });
+    const missing = recipes.filter((s) => !s.done && !s.active).length;
+    const ids = compareIds(entry);
+    const tries = (entry.try || []).map((t) => h("button", { title: t.why, onclick: () => {
+      app.draft = { config: t.config, title: t.title, why: t.why, seeds: t.seeds, exercise: entry.title };
+      app.go("#new/draft");
+    } }, t.title));
+    return h("section", { class: "card course-lesson", id: `course-${entry.lesson}` },
+      h("div", { class: "section-head" },
+        h("div", {}, h("div", { class: "lesson-head" }, h("h2", {}, entry.title),
+            h("span", { class: "muted small" }, `course lesson ${entry.n} of ${course.lessons.length}`)),
+          h("p", { class: "ink2" }, entry.question)),
+        h("div", { class: "btn-row" },
+          h("button", { onclick: () => readLesson(entry.lesson) }, "Read lesson"),
+          ids.length >= 2 ? h("button", { title: "Compare this lesson's recipes (and what they change from) side by side",
+            onclick: () => { app.setCompare(ids); app.go(`#compare/${ids.join(",")}`); } }, "Compare") : null,
+          missing ? h("button", { class: "primary", onclick: (e) => train(entry, e.currentTarget),
+            title: `Queue ${missing} recipe(s) × ${entry.seeds} seeds, 10 minutes each` }, "Train this lesson") : null)),
+      h("div", { class: "chips" }, h("span", { class: "small muted" }, "Recipes"), recipes.map((s) => h("span", {
+        class: "chip" + (s.done >= entry.seeds ? " done" : ""), title: s.active ? `${s.active} queued or training` : "" },
+        h("b", {}, s.rc.name), ` ${s.done}/${entry.seeds} seeds${s.active ? " · training" : ""}`))),
+      entry.terms?.length ? h("div", { class: "chips terms" }, h("span", { class: "small muted" }, "Terms"),
+        entry.terms.map(termChip)) : null,
+      tries.length ? h("div", { class: "btn-row try-row" }, h("span", { class: "small muted" }, "Try this"), tries) : null,
+      lr.length ? runsTable(lr) : null);
+  }
+
   function renderList() {
     const lessons = [...new Set(app.runs.map((r) => r.lesson))].sort();
     lessonSel.replaceChildren(h("option", { value: "" }, "All lessons"),
       lessons.map((l) => h("option", { value: l, selected: l === state.lesson }, l)));
     const runs = app.runs.filter(matches);
-    if (!app.runs.length) {
-      list.replaceChildren(h("div", { class: "card empty" }, h("strong", {}, "No runs yet"),
+    const byLesson = (l) => runs.filter((r) => r.lesson === l).reverse(); // newest first
+    const courseCards = (course?.lessons || []).filter((e) => !filtering() || byLesson(e.lesson).length)
+      .map((e) => courseCard(e, byLesson(e.lesson)));
+    const notebook = lessons.filter((l) => !courseLessons.has(l) && runs.some((r) => r.lesson === l))
+      .map((l) => lessonCard(l, byLesson(l)));
+    const parts = [];
+    if (courseCards.length) {
+      parts.push(h("div", { class: "list-head" }, h("h2", {}, course.title), h("p", { class: "ink2" }, course.about)), ...courseCards);
+    }
+    if (notebook.length) {
+      parts.push(h("div", { class: "list-head" }, h("h2", {}, courseCards.length ? "Notebook" : "Lessons"),
+        courseCards.length ? h("p", { class: "ink2" }, "Your own lessons and earlier experiments.") : null), ...notebook);
+    }
+    if (!app.runs.length && !courseCards.length) {
+      parts.push(h("div", { class: "card empty" }, h("strong", {}, "No runs yet"),
         "Start one: pick what the snake sees, how it is rewarded and which algorithms learn.",
         h("button", { class: "primary", onclick: () => app.go("#new") }, "New run")));
-    } else if (!runs.length) {
-      list.replaceChildren(h("div", { class: "card empty" }, "No runs match these filters."));
-    } else {
-      list.replaceChildren(...lessons.filter((l) => runs.some((r) => r.lesson === l)).map((lesson) => {
-        const lr = runs.filter((r) => r.lesson === lesson).reverse(); // newest first
-        return h("section", { class: "card" },
-          h("div", { class: "section-head" },
-            h("div", { class: "lesson-head" }, h("h2", {}, lr[0].lesson_title), h("span", { class: "muted small" },
-              `${lesson} · ${lr.length} run${lr.length > 1 ? "s" : ""}`)),
-            h("button", { onclick: () => readLesson(lesson) }, "Read lesson")),
-          h("div", { class: "table-scroll" }, h("table", { class: "runs-table" },
-            h("thead", {}, h("tr", {}, h("th", {}, h("span", { class: "hidden" }, "Compare")), h("th", {}, "Run"),
-              h("th", {}, "Status"), h("th", {}, "Vision"), h("th", {}, "Reward"),
-              h("th", {}, "Eval (mean apples, 100 games)"), h("th", {}, "Time"), h("th", { class: "r" }, "Actions"))),
-            h("tbody", {}, rowsFor(lr)))));
-      }));
+    } else if (!parts.length) {
+      parts.push(h("div", { class: "card empty" }, "No runs match these filters."));
     }
+    list.replaceChildren(...parts);
     renderBar();
   }
 
@@ -257,7 +345,12 @@ export function mount(main, _param, app) {
     const d = await api.get(`/api/lesson?name=${q(name)}`);
     const md = h("div", { class: "markdown" });
     md.innerHTML = marked.parse(d.markdown); // lessons are local files written by you and lessons.py
+    for (const a of md.querySelectorAll("a")) {  // links to other lessons (../<lesson>/LESSON.md) open here
+      const m = (a.getAttribute("href") || "").match(/^\.\.\/([a-z0-9_-]+)\/LESSON\.md$/);
+      if (m) a.addEventListener("click", (e) => { e.preventDefault(); readLesson(m[1]); });
+    }
     openDialog(md, h("div", { class: "btn-row" }, h("button", { onclick: closeDialog }, "Close")));
+    document.getElementById("dialog-body")?.scrollTo?.(0, 0);
   }
 
   const refresh = () => { renderActive(); renderMachine(); renderList(); };

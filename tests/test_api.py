@@ -58,3 +58,30 @@ def test_replay_game_from_a_saved_run(client):
     g = client.get(f"/api/game?run={rid}&agent=dqn_score").json()
     assert g["meta"]["vision"]["type"] == "short" and len(g["game"]["heads"]) > 0
     assert "Short vision" in client.get("/api/lesson?name=01-short-vision").json()["title"]
+
+
+def test_inspect_frames_follow_the_replayed_game(client):
+    rid = client.get("/api/runs").json()["runs"][0]["id"]
+    g = client.get(f"/api/game?run={rid}&agent=dqn_score").json()
+    game, version = g["game"], g["meta"]["version"]
+    url = f"/api/frame?run={rid}&agent=dqn_score&seed={game['seed']}&version={version}"
+    w = game["w"]
+    first = client.get(url + "&step=0").json()
+    assert first["moves"] == game["steps"] and first["info"]["outputs"] == "q" and len(first["info"]["names"]) == 11
+    assert [c[1] * w + c[0] for c in first["snake"]] == game["init"]
+    for step in (1, 2, 7, 3):  # forward and back
+        f = client.get(url + f"&step={step}").json()
+        x, y = f["snake"][0]
+        assert y * w + x == game["heads"][step - 1]
+        assert f["action"] == max(range(3), key=lambda i: f["out"][i])  # the move is the highest output
+    last = client.get(url + f"&step={game['steps']}").json()
+    assert last["out"] is None and last["end"] in ("wall", "body", "starved", "won", "limit") and last["score"] == game["score"]
+    assert client.get(url.replace(version, "missing") + "&step=0").status_code == 410
+
+
+def test_run_again_keeps_a_per_agent_reward(client):
+    base = client.get("/api/runs").json()["runs"][0]
+    assert base["config"]["reward"] is None  # lesson 01: each agent has its own reward
+    new = client.post("/api/runs", json={"config": {**base["config"], "vision": "room"}}).json()
+    again = client.get(f"/api/run?id={new['id']}").json()["config"]
+    assert again["reward"] is None and [a["reward"] for a in again["agents"]] == [a["reward"] for a in base["config"]["agents"]]

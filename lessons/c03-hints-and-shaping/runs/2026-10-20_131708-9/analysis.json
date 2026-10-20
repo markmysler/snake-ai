@@ -1,0 +1,149 @@
+{
+  "state": "done",
+  "model": "claude-haiku-5-5",
+  "created": "2026-10-20 14:35:59",
+  "seconds": 22.8,
+  "usage": {
+    "model": "claude-haiku-5-5",
+    "prompt_tokens": 16532,
+    "completion_tokens": 4066
+  },
+  "result": {
+    "headline": "The potential hint scored 21.84 on this seed's 100 test games, but across its three seeds the score is 21.38 \u00b1 0.61, which is the same as the no-hint and distance-hint runs.",
+    "summary": "DQN (the Q-learning agent that learns the value of each move from replayed experience) with the potential hint averaged 21.84 apples on the test games (median 21, max 41). Its three seeds gave 21.61, 20.69 and 21.84. The no-hint runs (seeds 1 and 2) gave 20.44 and 21.20, and the distance hint gave 21.68, 21.16 and 20.82. Every spread overlaps, so the hint made no detectable difference to the final score.\n\nThe test games show the snake plays cleanly: 181 steps per game and 8 steps per apple, with no starvation. Of the 100 games, 85 ended by crashing into its own body and 15 into a wall. The training curve climbs quickly. At the first logged point after the start (0.92 min, 259k env steps) the mean of the last 100 games was already 14.12, and it then wandered between 14 and 17 until the 10-minute mark (16.33). The first minute did the learning, and the remaining nine minutes added almost nothing.",
+    "diagnosis": "The short vision shows only the adjacent square in each direction. Once the snake is long, it cannot see its own tail until it is already next to it, so body collisions dominate (85 of 100). That limit comes from the input, not from the reward, which is why changing the hint barely moved the score. A potential-based hint (a reward for moving toward the apple that provably leaves the best strategy unchanged) mainly speeds early learning, and this run had already learned most of what the short view allows by its first logged point. The hint's early effect cannot be read from these curves, because the logs are about a minute apart. Also, this run shared the machine with another run, which affects speed (about 4,200 steps per second) but not the score.",
+    "learned": "A reward hint can speed learning only when the agent's view can use the hint. Compare hints using the spread across seeds and the test score, not the single training curve, and check whether the agent's inputs limit it more than its reward does.",
+    "prediction_check": null
+  },
+  "recommendations": [
+    {
+      "title": "Give the potential-hint snake rays vision",
+      "why": "Body crashes are 85% of test deaths and the short vision cannot see the tail, so a view that reaches further along each direction should cut those crashes if vision is the limit. Lesson 03 shows that reward changes alone leave the score flat.",
+      "change": "Switch the vision from short to rays with 4 squares of depth, keeping the potential hint.",
+      "prediction": "DQN test mean rises from 21.84 to about 24\u201327, and body deaths fall below 70 of 100 games.",
+      "question": "Does seeing further along each line, rather than changing the reward, raise the score of the same DQN agent?",
+      "new_lesson": true,
+      "lesson_slug": "vision-limits-the-hint",
+      "recipe": {
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        }
+      },
+      "config": {
+        "lesson": "c03-hints-and-shaping",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "potential": 0.1
+        },
+        "agents": [
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 2
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "vision short \u2192 rays:depth=4"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Make the potential hint ten times louder",
+      "why": "The lesson's Try-this asks whether a loud hint misleads the snake. A potential-based hint should not change the best strategy even when large, so the score should stay flat while early learning may change.",
+      "change": "Raise the potential weight from 0.1 to 1.0.",
+      "prediction": "Test mean stays within 20\u201323 of the 21.84 baseline, and the snake still eats about 8 steps per apple.",
+      "question": "Can a large potential hint mislead DQN, or does it stay harmless as the theory says?",
+      "new_lesson": false,
+      "lesson_slug": "c03-hints-and-shaping",
+      "recipe": {
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "potential": 1.0
+        }
+      },
+      "config": {
+        "lesson": "c03-hints-and-shaping",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "short"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "potential": 1.0
+        },
+        "agents": [
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 2
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "reward: potential 0.1 \u2192 1"
+      ],
+      "launched": []
+    }
+  ],
+  "recommended": 0,
+  "ideas": [
+    {
+      "id": "idea-25",
+      "title": "Plot curves against env steps at fine resolution",
+      "kind": "dashboard",
+      "what": "Log the training mean at regular env-step intervals, such as every 50k steps, and plot all hint variants on the same step axis. Show the first 500k steps by default.",
+      "why": "This run's curve has one point at 0.02 min and the next at 0.92 min, so the lesson's question about which hint helps most early cannot be answered from the curves.",
+      "expected": "Lets learners compare how many steps each hint needs to reach a mean of 10, which is the early speed-up the lesson asks about.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 14:35:59",
+      "source": {
+        "run": "c03-hints-and-shaping/2026-10-20_131708-9",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    }
+  ]
+}

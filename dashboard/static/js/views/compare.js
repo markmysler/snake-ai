@@ -1,7 +1,7 @@
 // Compare: up to 3 runs. Color = run (fixed per slot). One small chart per algorithm with a
 // shared y-scale, a "what changed" table that highlights differences, and test results.
 import { Board } from "../components/board.js";
-import { LineChart, maxOf, METRICS, X_MODES } from "../components/linechart.js";
+import { isOldGaCurve, LineChart, maxOf, METRICS, X_MODES } from "../components/linechart.js";
 import { info } from "../components/glossary.js";
 import { addBoards, playbackControls, removeBoards } from "../components/playback.js";
 import { groupMembers, outcomeBar, outcomeLegend, spreadOf, stripPlot, verdict } from "../components/spread.js";
@@ -107,6 +107,7 @@ export function mount(main, param, app) {
         color: color(i), dash: j > 0, rows: histories[r.id]?.[a.id] || [] })));
       return { el: h("div", { class: "facet" }, h("h3", {}, ALGO_LABEL[algo] || algo), h("div", { class: "chart-box" }, canvas)), canvas, series };
     });
+    const oldGa = rs.filter((r) => r.agents.some((a) => isOldGaCurve(a, histories[r.id]?.[a.id])));
     const yMax = Math.ceil(maxOf(facets.flatMap((f) => f.series.map((s) => s.rows)), view.metric) * 1.05) || undefined;
     queueMicrotask(() => {
       for (const f of facets) {
@@ -125,7 +126,11 @@ export function mount(main, param, app) {
       h("div", { class: "legend" }, rs.map((r, i) => h("span", { "--series": seriesVar(i) }, h("i", { class: "key" }), runTitle(r))),
         rs.some((r) => r.reward === "per agent") ? h("span", {}, h("i", { class: "key dash" }), "second agent of the same algorithm") : null),
       h("div", { class: "facets" }, facets.map((f) => f.el)),
-      h("p", { class: "small muted" }, `${METRICS[view.metric].title} against ${X_MODES[view.x].title.toLowerCase()}.`));
+      h("p", { class: "small muted" }, `${METRICS[view.metric].title} against ${X_MODES[view.x].title.toLowerCase()}.`
+        + (algos.includes("ga") ? " GA curves follow the networks each run keeps (its elites)." : "")),
+      oldGa.length && view.metric === "mean" ? h("p", { class: "small msg warn" }, `Recorded before the GA curve fix: ${oldGa.map(runTitle).join(", ")}. `
+        + "Their GA curve is the last mutated children of each generation, so it sits lower than a newer run's would. "
+        + "Compare test scores instead.") : null);
   }
 
   // ---- test results ----

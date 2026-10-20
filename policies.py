@@ -33,8 +33,17 @@ class MLPPolicy:
         self.b2 = flat[i:i + n_out]
         self.n_in = n_in
 
+    def scores(self, state):
+        """The 3 output values (left, straight, right); the highest one is the move."""
+        return np.tanh(state @ self.w1 + self.b1) @ self.w2 + self.b2
+
     def act(self, state):
-        return int(np.argmax(np.tanh(state @ self.w1 + self.b1) @ self.w2 + self.b2))
+        return int(np.argmax(self.scores(state)))
+
+
+def scores_of(act):
+    """The output values behind a policy's act function (MLPPolicy.act or TorchPolicy.act)."""
+    return act.__self__.scores
 
 
 def load_policy(path, meta=None):

@@ -1,0 +1,248 @@
+{
+  "state": "done",
+  "model": "claude-haiku-5-5",
+  "created": "2026-10-20 17:53:26",
+  "seconds": 36.5,
+  "usage": {
+    "model": "claude-haiku-5-5",
+    "prompt_tokens": 19984,
+    "completion_tokens": 6810
+  },
+  "result": {
+    "headline": "The GA won clearly on the test games (50.72 vs 20.36 for DQN in this seed; across 3 seeds 46.7 \u00b1 4.0 vs 20.7 \u00b1 0.5), but DQN reached its score with about 1.8M env steps against the GA's 232M.",
+    "summary": "**GA (evolution):** The test mean is 50.72 (median 53.5, best game 87). Each test game lasts about 1,275 steps and about 25 steps per apple. 90 of 100 games ended by hitting its own body and 10 by hitting a wall. Its training curve climbed steadily from 0.3 at about 0.5 minutes to 51.2 at 10 minutes and had not levelled off. The population mean of 40.7 at the end shows that most children were still improving. Across the 3 seeds the GA scored 42.75 to 50.72, so this seed sits at the top of the range.\n\n**DQN (Q-learning):** The test mean is 20.36 (median 21, best game 40). Games last about 168 steps, about 8 steps per apple. 82 of 100 games ended by body collision and 18 by wall. Its curve rose to about 15.5 within the first minute and then stayed flat at 15 to 17 for the remaining nine minutes, while it ran about 3,900 steps per second against the GA's roughly 400,000. The three DQN seeds agree closely (20.36 to 21.2).\n\nThe lesson's note that the DQN line is 'far ahead at every amount of experience' holds only for the first 2 to 3 million env steps. After that the GA's training mean passes DQN's, and by 33M steps it is at 29, more than DQN's final 17 after its whole run.",
+    "diagnosis": "Both snakes die by crashing, not starving, so the main limit is that the 'short' vision only shows the one square ahead. The snake cannot see that its own body is closing off the space around it, so it walks into a trap. The GA partly makes up for this by evolving long survival and eating about 50 apples per game, and it has 232M steps to try variants. DQN has 1.8M steps, and its one-square view plus a single learned value function seems to cap it near 15 to 20 apples. Its flat curve after one minute suggests it has learned what the short view can express, not that it is still exploring: epsilon (the random-move rate) decays over the first 100k steps, which is about the first minute of this run.\n\nThe score reward (+10 per apple, -10 for death) is the same for both. It gives no help in avoiding self-traps, and the GA is paying for each apple with far more trial games.",
+    "learned": "Sample efficiency (score per env step) and speed (steps per second) are different measures, and the winner depends on which one you care about. DQN learns quickly from few steps but then plateaus, while the GA is slow per step but keeps climbing with enough steps.",
+    "prediction_check": null
+  },
+  "recommendations": [
+    {
+      "title": "Give the snake a room-aware vision",
+      "why": "Most test games end with the snake running into its own body (82% DQN, 90% GA). The room vision adds a flood fill that shows how much free space each move leaves, which is the information needed to avoid boxing itself in. If the crash mix changes, the cause was blindness to the trap.",
+      "change": "Switch the vision from short to room, keeping the score reward and 10 minutes.",
+      "prediction": "DQN's body-collision share falls below 70% of test games (from 82%), and its test mean rises by 2 or more points above 20.4. The GA improves less.",
+      "question": "Does seeing how much free space each move leaves reduce body crashes, and by how much does it raise the DQN test score?",
+      "new_lesson": true,
+      "lesson_slug": "vision-room-crashes",
+      "recipe": {
+        "vision": {
+          "type": "room"
+        }
+      },
+      "config": {
+        "lesson": "c01-two-ways-to-learn",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "room"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "vision short \u2192 room"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Try a bigger 15 by 15 board",
+      "why": "On a bigger board apples are farther away and games last longer. This tests whether the GA's lead holds when the game gets harder, which is the lesson's own first Try this task.",
+      "change": "Change the board from 10 by 10 to 15 by 15, keeping the short vision, score reward and 10 minutes.",
+      "prediction": "The GA stays above 35 on the test games, and its steps per apple rise above 25. DQN stays below 25.",
+      "question": "Does the GA's lead over DQN hold, and does a bigger board make the GA's long survival more useful?",
+      "new_lesson": false,
+      "lesson_slug": "c01-two-ways-to-learn",
+      "recipe": {
+        "width": 15,
+        "height": 15
+      },
+      "config": {
+        "lesson": "c01-two-ways-to-learn",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "short"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 15,
+        "height": 15,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "board 10x10 \u2192 15x15"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Look six squares ahead with rays",
+      "why": "The short vision sees only one square, so the snake cannot notice its body coming up on the far side. Rays look up to N squares along eight lines, so a depth of 6 tests whether seeing farther than one square is what limits DQN.",
+      "change": "Switch the vision from short to rays with depth 6, keeping the score reward and 10 minutes.",
+      "prediction": "DQN's test mean rises to about 23 to 27, and its body-collision share falls below 75%. The GA changes by less than DQN.",
+      "question": "Is DQN's plateau caused by seeing only one square, and does a longer look reduce self-collisions?",
+      "new_lesson": true,
+      "lesson_slug": "see-further-rays",
+      "recipe": {
+        "vision": {
+          "type": "rays",
+          "depth": 6
+        }
+      },
+      "config": {
+        "lesson": "c01-two-ways-to-learn",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "rays",
+          "depth": 6
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "vision short \u2192 rays:depth=6"
+      ],
+      "launched": []
+    }
+  ],
+  "recommended": 0,
+  "ideas": [
+    {
+      "id": "idea-40",
+      "title": "Test score on the learning curve",
+      "kind": "evaluation",
+      "what": "Run the greedy test (no exploration, fixed seeds) at regular points during training and plot the score on the learning curve for both agents, next to the training mean.",
+      "why": "DQN's training mean sits at about 16.9 while its final test score is 20.4, and the GA's training mean (51.2) and test score (50.7) nearly match. The curves do not show when DQN's best test score was reached, or whether its test score also plateaued after one minute.",
+      "expected": "Learners could see whether DQN's test score plateaus as early as its training mean does, and whether the saved best model came from the early or late part of the run.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 17:53:26",
+      "source": {
+        "run": "c01-two-ways-to-learn/2026-10-20_131820",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-41",
+      "title": "Death causes over the training curve",
+      "kind": "dashboard",
+      "what": "Plot the share of wall, body and starvation deaths in each training checkpoint, not only in the final test games.",
+      "why": "Body collisions are 82% of DQN's and 90% of the GA's test games, but the run only reports them at the end. We cannot tell whether crashes into the body grew as the snake got longer or were already common early on.",
+      "expected": "Shows whether the body-crash share rises with snake length during training, which would confirm the self-trap explanation and make the room and rays recommendations easier to judge.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 17:53:26",
+      "source": {
+        "run": "c01-two-ways-to-learn/2026-10-20_131820",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    }
+  ]
+}

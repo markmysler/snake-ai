@@ -1,0 +1,205 @@
+{
+  "state": "done",
+  "model": "claude-haiku-5-5",
+  "created": "2026-10-20 14:16:08",
+  "seconds": 29.9,
+  "usage": {
+    "model": "claude-haiku-5-5",
+    "prompt_tokens": 17448,
+    "completion_tokens": 5483
+  },
+  "result": {
+    "headline": "The distance hint gave DQN no measurable gain: this seed scored 20.82 on the fixed test (the three seeds average 21.22 \u00b1 0.43), in the same range as the no-hint runs (20.44 to 21.31).",
+    "summary": "DQN with the distance hint (+0.1 for each step closer to the apple, \u22120.1 for each step away) reached a test mean of 20.82 apples on seed 2, with median 21 and best game 41. Across the three hint seeds the test means were 21.68, 21.16 and 20.82 (mean 21.22, std 0.43). The no-hint runs in the record scored 21.31 (baseline, seed 0), 20.44 (seed 1) and 21.20 (seed 2). The gap between the two groups is about 0.2 points, smaller than the 0.43 spread across seeds, so this run gives no evidence that the hint helps or hurts the final score.\n\nHow the snake fails: 83 of 100 test games ended by hitting its own body and 17 by hitting a wall, with none starving. It averaged 171 steps per game and 8 steps per apple, so it moves efficiently toward food and then traps itself as the body grows. The training curve rose fast, from a mean of 0.23 in the first 0.02 minutes to 15.57 by about 0.9 minutes, then flattened between 14 and 16.5 for the rest of the 10 minutes (final mean of the last 100 games: 14.41). The best single game kept improving slowly (37 to 46), while the average did not. Throughput fell from about 6,700 to about 4,000 env steps per second as training went on. The run used 2.6 million env steps; the no-hint runs used 2.0 and 2.5 million, so speed varies with the shared machine as well as the algorithm.",
+    "diagnosis": "The hint is small (0.1 per step, against 10 per apple), so it nudges the snake without changing what a good strategy is. That explains why the score barely moves. The bottleneck is what the snake can see: the short vision only shows the square directly ahead, so it cannot tell that its body is curling around into a dead end. That is why body collisions dominate (83%) and the hint cannot fix them. The training mean also reflects exploration only early on: with eps_decay_steps at 100000, exploration is nearly finished after the first minute or so, so the later plateau is mostly about the learned policy. Because this run has no no-hint curve in the record, it cannot say whether the hint speeds early learning; the curve alone does not show that.",
+    "learned": "A small reward hint does not change the final score when the bottleneck is what the agent can see; check the crash type (here, body collisions at 83%) before tuning rewards. Judge any effect against the seed spread, not against one run.",
+    "prediction_check": null
+  },
+  "recommendations": [
+    {
+      "title": "Let the snake see further with rays",
+      "why": "Body collisions are 83% of crashes, and the short vision is blind beyond one square, so the snake cannot see its own tail coming. Rays look up to 4 squares along 8 lines, which should reveal dead ends earlier.",
+      "change": "Switch vision from short to rays with depth 4, keeping the distance hint.",
+      "prediction": "DQN test mean rises to about 25 to 30 apples, and the body-collision share falls below 70% of test games.",
+      "question": "Does seeing further reduce body crashes and raise the test score more than the hint did?",
+      "new_lesson": true,
+      "lesson_slug": "body-crash-diagnosis",
+      "recipe": {
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        }
+      },
+      "config": {
+        "lesson": "c03-hints-and-shaping",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "distance": 0.1
+        },
+        "agents": [
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 2
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "vision short \u2192 rays:depth=4"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Make the distance hint ten times louder",
+      "why": "This tests whether the hint is too weak to matter or whether a stronger hint would pull the snake off course. The lesson's Try this asks the same question.",
+      "change": "Set the distance hint weight from 0.1 to 1.0.",
+      "prediction": "DQN test mean falls below 19 apples, with more wall or body crashes as the snake chases the hint instead of the apple.",
+      "question": "At what hint size does shaping start to mislead DQN?",
+      "new_lesson": false,
+      "lesson_slug": "c03-hints-and-shaping",
+      "recipe": {
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "distance": 1.0
+        }
+      },
+      "config": {
+        "lesson": "c03-hints-and-shaping",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "short"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "distance": 1.0
+        },
+        "agents": [
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 2
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "reward: distance 0.1 \u2192 1"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Swap distance hint for potential hint",
+      "why": "The potential-based hint is designed not to change the best strategy, so it is a useful control against the distance hint at the same size.",
+      "change": "Replace the distance hint with the potential hint at weight 0.1, keeping apple 10 and death 10.",
+      "prediction": "Test mean within about \u00b10.5 of this run's 20.82, with no clear change in early learning.",
+      "question": "Does the type of hint matter at this size, or is the difference within seed noise?",
+      "new_lesson": false,
+      "lesson_slug": "c03-hints-and-shaping",
+      "recipe": {
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "potential": 0.1
+        }
+      },
+      "config": {
+        "lesson": "c03-hints-and-shaping",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "short"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "potential": 0.1
+        },
+        "agents": [
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 2
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "reward: \u2212 distance",
+        "reward: + potential 0.1"
+      ],
+      "launched": []
+    }
+  ],
+  "recommended": 0,
+  "ideas": [
+    {
+      "id": "idea-24",
+      "title": "Compare seed groups at matched env steps",
+      "kind": "evaluation",
+      "what": "Report each run's test score at fixed env-step checkpoints (for example 250k, 500k, 1M) and show the seed-group mean and spread at each one, so early learning speed can be compared directly.",
+      "why": "This run's curve rises fast in the first minute, but the record holds only the final stats for the no-hint runs, so the claim that hints speed up early learning cannot be tested from what is stored.",
+      "expected": "A fair sample-efficiency comparison for the hint question; it should show whether the hint changes score at 250k steps even if the final score does not change.",
+      "effort": "medium",
+      "status": "new",
+      "created": "2026-10-20 14:16:08",
+      "source": {
+        "run": "c03-hints-and-shaping/2026-10-20_131708-6",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    }
+  ]
+}

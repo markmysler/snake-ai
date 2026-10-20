@@ -212,8 +212,21 @@ CONCEPTS = [
      "The fair number to compare runs on: same 100 games for every model. Shown as mean / median / max apples.",
      ["test score", "test mean", "evaluation", "test games"], ["c.train-mean"]),
     ("c.train-mean", "Training mean (last 100)", "The average apples of the last 100 games played while training.",
-     "Includes DQN's random exploration moves and the GA's whole population, so it is usually below the test score "
-     "(or above it for a lucky GA).", ["training mean", "mean of last 100", "mean_last_100"], ["c.test-score"]),
+     "DQN's include its random exploration moves, so they are usually below the test score. The GA's follow the "
+     "networks it keeps (see “Kept networks”).", ["training mean", "mean of last 100", "mean_last_100"],
+     ["c.test-score", "c.kept-curve"]),
+    ("c.kept-curve", "Kept networks (GA curve)", "The GA's learning curve follows its elites: the best networks of "
+     "each generation, carried unchanged into the next one, playing that generation's new games.",
+     "Each generation is mostly mutated children, and most mutations make a network worse, so the whole generation "
+     "scores far below what the GA keeps (drawn as a thin dotted line). The elites are scored on new games, not on "
+     "the ones they were picked on, to avoid the winner's curse. Runs recorded before this fix show only the last "
+     "children, so their GA curve looks too low.",
+     ["kept networks", "whole generation", "population_mean"], ["ga", "c.winners-curse", "c.train-mean"]),
+    ("c.winners-curse", "Winner's curse", "Whatever won a selection on some games looks better on those games than it "
+     "really is.",
+     "Out of 200 networks, the one with the best score on 3 games was partly lucky on exactly those games. Score it "
+     "again on new games and it drops back. That is why the GA's curve and the test both use games the network was "
+     "not picked on.", ["winner's curse", "winners curse", "selection bias"], ["c.kept-curve", "c.test-score"]),
     ("c.best-game", "Best game", "The highest score in any single training game.",
      "It shows what the snake can do on a good day, but it is one lucky game: compare runs on the test score.", ["best game"], ["c.test-score"]),
     ("c.sample-efficiency", "Sample efficiency", "How much score a method gets per env step of experience.",

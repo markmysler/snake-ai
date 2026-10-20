@@ -1,0 +1,203 @@
+{
+  "state": "done",
+  "model": "claude-haiku-5-5",
+  "created": "2026-10-20 17:12:46",
+  "seconds": 27.2,
+  "usage": {
+    "model": "claude-haiku-5-5",
+    "prompt_tokens": 17358,
+    "completion_tokens": 4824
+  },
+  "result": {
+    "headline": "Judging each GA network on 10 games instead of 3 did not measurably change the result: this seed's test mean was 46.5, and across three seeds it averaged 45.99 \u00b1 7.7, against 48.4 and 42.8 for the two 3-game baseline seeds shown.",
+    "summary": "The GA (genetic algorithm: a population of small networks is mutated and selected each generation, with no gradients) reached a test mean of 46.5 over 100 fixed-seed games, with median 47 and best game 88. Of those 100 test games, 95 ended by crashing into its own body, 5 into a wall, none by starving, and none by filling the board. It took 27 steps per apple, the same as the baseline. Its kept networks (the solid curve, the best networks the GA has kept so far) climbed from 0.14 to 43.6 games-mean over 10 minutes. The curve was still rising at the end (37.4 at 8.5 min, 43.6 at 10 min), so the GA had not converged. The whole-generation mean (dotted, population_mean) rose from 0.09 to 29.3, which is expected because most members are mutated children.\n\nThe run used 235 generations in 10 minutes (470,000 games at 2,000 games per generation), which is about 2.7 times fewer generations than the 3-game baseline (about 625 generations for 375,000 games). It still used about the same number of environment steps (228M, vs. 223M and 328M for the baseline seeds), because the cost per step is the same and the number of games per generation is what changed. Across the seed group the test scores were 53.4, 38.1 and 46.5. Seed 0 is the only one that filled the board (20 of 100 test games won, max 97 apples), which shows how large the seed-to-seed spread is.",
+    "diagnosis": "Most likely the 10-game setting makes each fitness estimate fairer (less winner's curse, where a network that got lucky on 3 games is kept over a better one), but at 10 minutes that gain is roughly cancelled by having 2.7 times fewer generations. Both effects are small compared with seed noise (std 7.7), so this single seed cannot separate them. The bigger limit looks like the input: the short vision sees only the squares next to the head, so the snake cannot tell that its own tail is a few squares away. That is why 95% of its test games end in a self-crash. A 16-unit network with 11 inputs, trained for 10 minutes, mostly learns to avoid immediate danger and to chase apples, and the body-collision share is the clearest sign of that.",
+    "learned": "More games per genome make the GA's fitness more reliable but cost generations, and at 10 minutes these two effects cancel out. A single seed cannot show a difference this small, so always compare against the spread across seeds before deciding a setting helped.",
+    "prediction_check": null
+  },
+  "recommendations": [
+    {
+      "title": "Try rays vision with this GA",
+      "why": "95% of this run's test games end by self-crash, and short vision cannot see the body beyond one square. Rays look up to 4 squares along 8 lines, so they can show the body coming. If vision is the limit, the test mean should rise and the body share should fall.",
+      "change": "Switch the vision from short to rays (depth 4), keeping the 10 games per genome and the 10-minute budget.",
+      "prediction": "Test mean rises above about 55, and the body-collision share falls below 80% (from 95%), with steps per apple near or below 27.",
+      "question": "Is the short vision's blindness what limits the GA's score in 10 minutes, rather than the number of games per genome?",
+      "new_lesson": false,
+      "lesson_slug": "c09-tuning-evolution",
+      "recipe": {
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        }
+      },
+      "config": {
+        "lesson": "c09-tuning-evolution",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 10,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 2
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "vision short \u2192 rays:depth=4"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Mutate less with 10 games",
+      "why": "The kept networks were still improving at the 10-minute mark (37 to 44 in the last 1.5 minutes), and a lower mutation rate changes fewer weights per child, which can help a network that is already good keep improving. This is the other arm of the lesson.",
+      "change": "Lower the GA's mutation_rate from 0.1 to 0.05, keeping 10 games per genome.",
+      "prediction": "Test mean between 40 and 55, most likely near 46 to 50, with the spread across seeds still overlapping this run's (38 to 53). Final kept-network mean rises a little faster in the last minutes.",
+      "question": "Does a gentler mutation rate help a 10-game GA squeeze more out of the 10-minute budget?",
+      "new_lesson": false,
+      "lesson_slug": "c09-tuning-evolution",
+      "recipe": {
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "mutation_rate": 0.05
+            }
+          }
+        ]
+      },
+      "config": {
+        "lesson": "c09-tuning-evolution",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "short"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 10,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.05,
+              "mutation_sigma": 0.2
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 2
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "ga mutation_rate 0.1 \u2192 0.05"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Try a population of 500",
+      "why": "With 10 games per genome, each generation is costly, so a bigger population means fewer generations. This tests whether more variety per generation beats the loss of generations at 10 minutes.",
+      "change": "Raise the GA population from 200 to 500, keeping 10 games per genome and the 10-minute budget.",
+      "prediction": "Fewer generations (about 95 instead of 235), and a test mean that stays within the seed spread (about 40 to 55) rather than a clear jump.",
+      "question": "Is the GA limited by how much variety each generation has, or by how many generations it gets?",
+      "new_lesson": false,
+      "lesson_slug": "c09-tuning-evolution",
+      "recipe": {
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 500
+            }
+          }
+        ]
+      },
+      "config": {
+        "lesson": "c09-tuning-evolution",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "short"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 500,
+              "games": 10,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 2
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "ga population 200 \u2192 500"
+      ],
+      "launched": []
+    }
+  ],
+  "recommended": 0,
+  "ideas": [
+    {
+      "id": "idea-37",
+      "title": "Mutation rate that decays over generations",
+      "kind": "training",
+      "what": "Start the GA with a high mutation rate for broad search, then lower it as generations pass, so late generations refine the kept networks. It would be a schedule that the trainer applies each generation.",
+      "why": "The kept-network curve was still climbing at 10 minutes, and population_mean rose only from 16 to 29 over the last 5 minutes. A fixed mutation rate cannot be right at both the start and the end of training.",
+      "expected": "A higher test mean at the same 10-minute budget, for example 5 or more points above a fixed 0.1 rate, though this would need several seeds to confirm.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 17:12:46",
+      "source": {
+        "run": "c09-tuning-evolution/2026-10-20_131708-6",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    }
+  ]
+}

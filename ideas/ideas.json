@@ -1,5 +1,5 @@
 {
-  "last": 22,
+  "last": 41,
   "ideas": [
     {
       "id": "idea-1",
@@ -350,6 +350,310 @@
       "created": "2026-10-15 14:38:14",
       "source": {
         "run": "09-ga-games-per-genome/2026-10-15_143223",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-23",
+      "title": "Compare agents on score per env step",
+      "kind": "dashboard",
+      "what": "A dashboard view that plots test score against env steps (log scale) and against wall-clock minutes for all agents on one chart, with seed-group bands.",
+      "why": "The GA ran about 264M env steps and DQN about 2M in the same 10 minutes. The current curves mix the two units, making it hard to see that DQN is far more step-efficient while the GA is far faster per minute.",
+      "expected": "A learner can read sample efficiency (DQN about 10x better per step at this stage) and speed (GA about 130x more steps per second) in one picture.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 13:55:22",
+      "source": {
+        "run": "c02-you-get-what-you-reward/2026-10-20_131708",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-24",
+      "title": "Compare seed groups at matched env steps",
+      "kind": "evaluation",
+      "what": "Report each run's test score at fixed env-step checkpoints (for example 250k, 500k, 1M) and show the seed-group mean and spread at each one, so early learning speed can be compared directly.",
+      "why": "This run's curve rises fast in the first minute, but the record holds only the final stats for the no-hint runs, so the claim that hints speed up early learning cannot be tested from what is stored.",
+      "expected": "A fair sample-efficiency comparison for the hint question; it should show whether the hint changes score at 250k steps even if the final score does not change.",
+      "effort": "medium",
+      "status": "new",
+      "created": "2026-10-20 14:16:08",
+      "source": {
+        "run": "c03-hints-and-shaping/2026-10-20_131708-6",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-25",
+      "title": "Plot curves against env steps at fine resolution",
+      "kind": "dashboard",
+      "what": "Log the training mean at regular env-step intervals, such as every 50k steps, and plot all hint variants on the same step axis. Show the first 500k steps by default.",
+      "why": "This run's curve has one point at 0.02 min and the next at 0.92 min, so the lesson's question about which hint helps most early cannot be answered from the curves.",
+      "expected": "Lets learners compare how many steps each hint needs to reach a mean of 10, which is the early speed-up the lesson asks about.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 14:35:59",
+      "source": {
+        "run": "c03-hints-and-shaping/2026-10-20_131708-9",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-26",
+      "title": "Early-learning speed score per run",
+      "kind": "evaluation",
+      "what": "Report the average training score over the first few minutes, or the environment steps needed to reach a set score, for each run. Show it next to the final test score in seed-group comparisons.",
+      "why": "The lesson asks which hint helps most early on, but the final test scores differ by less than the seed spread, and the early comparison needs one number per run. This run's curve shows the plateau is reached within about one minute, so the early phase is where hints would matter.",
+      "expected": "Would separate hint groups by learning speed, for example showing whether a hint reaches a training mean of 15 in fewer env steps, and makes the early-phase comparison readable without eyeballing curves.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 14:36:55",
+      "source": {
+        "run": "c03-hints-and-shaping/2026-10-20_131708",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-27",
+      "title": "Final exploration floor for DQN",
+      "kind": "setting",
+      "what": "Add a setting for the exploration rate the DQN keeps at the end of training (for example 0.02), so the training mean is measured with less random play. Only the decay schedule is currently exposed.",
+      "why": "The DQN's training mean plateaus at 19 to 20 while its greedy test score is about 26. Part of that gap is random moves in training games, which makes the training curve hard to read.",
+      "expected": "The training mean should move closer to the test score (within about 2 to 3 points), so the curves become more useful for judging progress.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 15:07:20",
+      "source": {
+        "run": "c04-seeing-further/2026-10-20_131708-6",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-28",
+      "title": "Report test results by seed as a spread",
+      "kind": "dashboard",
+      "what": "On the seed-group view, show each seed's test mean and game-ending mix as a small chart next to the group mean, with the spread shown as error bars.",
+      "why": "The GA's group mean (29.3) hides one seed that starved in 36% of games and two that did not starve at all. A reader can miss that without opening each run.",
+      "expected": "Readers see weak seeds and failure modes at a glance, so fewer conclusions rest on one seed.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 15:07:20",
+      "source": {
+        "run": "c04-seeing-further/2026-10-20_131708-6",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-29",
+      "title": "Plot learning curves against env steps",
+      "kind": "dashboard",
+      "what": "Add a view that plots each algorithm's test or training score against env steps as well as wall-clock minutes, so sample efficiency can be seen directly.",
+      "why": "The GA took about 80M env steps in 10 minutes and DQN about 1.2M. Under equal wall-clock time the comparison hides how much more per step DQN learns.",
+      "expected": "Makes the sample-efficiency gap visible at a glance. Teaching value rather than a score change.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 15:08:23",
+      "source": {
+        "run": "c04-seeing-further/2026-10-20_131708",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-30",
+      "title": "Convolutional network for the whole board",
+      "kind": "algorithm",
+      "what": "Add a network option that reads the full-board pictures with convolutional layers, which share weights across neighbouring squares, instead of one fully connected layer over 1,083 inputs.",
+      "why": "DQN ran at only about 600 steps per second on whole-board inputs and got about 363,000 steps in 10 minutes. Its plateau suggests it has to relearn that nearby squares are related. The GA also needs to mutate about 17,000 weights.",
+      "expected": "Several times more steps per second and a higher DQN plateau (over 35 in 10 minutes), without the GA slowdown.",
+      "effort": "large",
+      "status": "new",
+      "created": "2026-10-20 15:28:47",
+      "source": {
+        "run": "c05-more-information/2026-10-20_131708",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-31",
+      "title": "Warn when a comparison changes several settings",
+      "kind": "dashboard",
+      "what": "When two runs in a lesson differ in more than the setting under test (here reward, time and vision), show a clear diff with a warning that the comparison is confounded.",
+      "why": "This run's note says only vision changed from the rays-4 run, yet its reward (score only) and time (10 minutes) differ from that run's reward (with potential and hunger) and its 5-minute budget. That confound made the GA result hard to attribute.",
+      "expected": "Fewer misread comparisons: learners would see the reward or time difference before drawing a conclusion from the vision change.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 15:28:47",
+      "source": {
+        "run": "c05-more-information/2026-10-20_131708",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-32",
+      "title": "Show greedy test score on DQN's training curve",
+      "kind": "dashboard",
+      "what": "Plot the greedy evaluation score (the same score used for the saved model) alongside DQN's training mean, so the learner can see the policy's progress without exploration noise.",
+      "why": "DQN's training mean stayed flat at about 21 from 1 to 10 minutes, while its greedy test score was about 38. The curve as drawn suggests DQN had stopped learning, which is misleading.",
+      "expected": "Makes the training curve match the test score, avoiding the apparent plateau; no change to the agent.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 15:40:00",
+      "source": {
+        "run": "c06-room-to-move/2026-10-20_131708",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-33",
+      "title": "Paired seed-difference view",
+      "kind": "dashboard",
+      "what": "Show, for each seed, the difference between two recipes next to the spread band of each group. The view would make a consistent but small gap visible as a single chart.",
+      "why": "The four same-seed differences here are all positive (+0.7 to +5.2), but the two groups still overlap. The current view makes it hard to see how that pattern compares with the noise.",
+      "expected": "Learners see whether a gap is consistent across seeds and how large it is relative to the spread, rather than comparing one best run with one worst run.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 16:30:53",
+      "source": {
+        "run": "c07-luck-or-skill/2026-10-20_131708-9",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-34",
+      "title": "Log full-board games during training",
+      "kind": "evaluation",
+      "what": "Count how many training games fill the board, per generation for the GA and per episode for DQN, and plot that count on the curve.",
+      "why": "The GA's best game reached 97 apples from about generation 212 onward, yet this seed won only 1 test game. The current logs cannot show how often the bonus actually fires during training.",
+      "expected": "A direct measure of how often a win bonus is reached during training, so learners can check the 'almost never' claim against data.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 16:30:53",
+      "source": {
+        "run": "c07-luck-or-skill/2026-10-20_131708-9",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-35",
+      "title": "Paired seed comparison with an interval",
+      "kind": "dashboard",
+      "what": "When two seed groups are compared, show the per-seed paired differences, their mean, and a rough 95% interval, with a plain note when the interval includes zero.",
+      "why": "The bonus group looked better than baseline in its best run, but its paired mean difference (+1.8, paired t\u22481.4 over 5 seeds) is consistent with zero, and the dashboard shows only the ranges.",
+      "expected": "Learners would reach the correct 'no real difference' conclusion without hand-computing statistics; the bonus comparison would show a 95% interval of roughly \u22121 to +5 apples.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 16:31:50",
+      "source": {
+        "run": "c07-luck-or-skill/2026-10-20_131708",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-36",
+      "title": "Count how often each reward fires",
+      "kind": "evaluation",
+      "what": "In the test summary, report how many test games triggered each reward feature (win, starve, death) alongside the ended counts.",
+      "why": "The win bonus fired in only 2 of 500 bonus test games, and the learner had to infer its rarity from the ended table; a direct count would show at once whether a reward can matter.",
+      "expected": "A learner could tell in seconds that a reward with a count of 2 cannot explain a difference of several apples.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 16:31:50",
+      "source": {
+        "run": "c07-luck-or-skill/2026-10-20_131708",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-37",
+      "title": "Mutation rate that decays over generations",
+      "kind": "training",
+      "what": "Start the GA with a high mutation rate for broad search, then lower it as generations pass, so late generations refine the kept networks. It would be a schedule that the trainer applies each generation.",
+      "why": "The kept-network curve was still climbing at 10 minutes, and population_mean rose only from 16 to 29 over the last 5 minutes. A fixed mutation rate cannot be right at both the start and the end of training.",
+      "expected": "A higher test mean at the same 10-minute budget, for example 5 or more points above a fixed 0.1 rate, though this would need several seeds to confirm.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 17:12:46",
+      "source": {
+        "run": "c09-tuning-evolution/2026-10-20_131708-6",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-38",
+      "title": "Show seed-group differences with a noise band",
+      "kind": "dashboard",
+      "what": "In the seed-group view, show each recipe's mean test score as a bar with a \u00b11 standard deviation range across its seeds, and mark a difference as 'inside noise' when the bars overlap.",
+      "why": "Here the mutation 0.05 vs 0.1 difference (about 5 points) sits inside the seed spread (9 points), and a learner reading single numbers could draw the wrong conclusion. The current view does not make this obvious.",
+      "expected": "Learners stop reading differences smaller than the seed spread as real effects, and fewer conclusions flip when a run is repeated with a new seed.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 17:32:23",
+      "source": {
+        "run": "c09-tuning-evolution/2026-10-20_131708-9",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-39",
+      "title": "Confidence intervals on seed-group comparisons",
+      "kind": "evaluation",
+      "what": "Show, for each seed group, the mean test score with an interval based on the spread across seeds, and mark whether two groups overlap, so a learner sees at once that a difference is within noise.",
+      "why": "Three seeds per group gave standard deviations of 3.7 to 9 points, and the lesson's question could not be answered from the means alone.",
+      "expected": "Learners stop reading differences under about 5 points as results; comparisons of this size would be flagged as inconclusive instead of being ranked.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 17:33:24",
+      "source": {
+        "run": "c09-tuning-evolution/2026-10-20_131708",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-40",
+      "title": "Test score on the learning curve",
+      "kind": "evaluation",
+      "what": "Run the greedy test (no exploration, fixed seeds) at regular points during training and plot the score on the learning curve for both agents, next to the training mean.",
+      "why": "DQN's training mean sits at about 16.9 while its final test score is 20.4, and the GA's training mean (51.2) and test score (50.7) nearly match. The curves do not show when DQN's best test score was reached, or whether its test score also plateaued after one minute.",
+      "expected": "Learners could see whether DQN's test score plateaus as early as its training mean does, and whether the saved best model came from the early or late part of the run.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 17:53:26",
+      "source": {
+        "run": "c01-two-ways-to-learn/2026-10-20_131820",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-41",
+      "title": "Death causes over the training curve",
+      "kind": "dashboard",
+      "what": "Plot the share of wall, body and starvation deaths in each training checkpoint, not only in the final test games.",
+      "why": "Body collisions are 82% of DQN's and 90% of the GA's test games, but the run only reports them at the end. We cannot tell whether crashes into the body grew as the snake got longer or were already common early on.",
+      "expected": "Shows whether the body-crash share rises with snake length during training, which would confirm the self-trap explanation and make the room and rays recommendations easier to judge.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 17:53:26",
+      "source": {
+        "run": "c01-two-ways-to-learn/2026-10-20_131820",
         "model": "claude-haiku-5-5"
       },
       "review": null

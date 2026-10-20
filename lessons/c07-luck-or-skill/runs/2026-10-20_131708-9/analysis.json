@@ -1,0 +1,189 @@
+{
+  "state": "done",
+  "model": "claude-haiku-5-5",
+  "created": "2026-10-20 16:30:53",
+  "seconds": 40.8,
+  "usage": {
+    "model": "claude-haiku-5-5",
+    "prompt_tokens": 20216,
+    "completion_tokens": 7816
+  },
+  "result": {
+    "headline": "The +100 board-full bonus did not measurably change the results: this run's GA scored 52.52 on test, the bonus group averages 47.93 \u00b1 4.05 across 5 seeds, and the four baseline seeds shown average about 46.6.",
+    "summary": "**GA (genetic algorithm, which evolves a population of networks without gradients):** test mean 52.52 (median 55.5, best game 97 apples, the full board). Per test game it took 1,357 steps and 26 steps per apple. It ended in 91 body crashes, 8 wall crashes, 0 starvations and 1 win, so it crashed rather than wandered. Its training curve climbed from 0.4 (generation 36) to 25.5 (generation 106), 43.8 (generation 282) and 51.1 at 10 minutes, still rising but slowing. The population mean reached 39.3. It ran 160M environment steps (game moves) at about 270k steps per second.\n\n**DQN (Deep Q-learning, which learns the value of each move from stored experience):** test mean 20.11 (median 19, best 37). It took 168 steps and 8 steps per apple per game, ending in 72 body crashes and 28 wall crashes. Its training mean (last 100 games) peaked around 15.8 by minute 5.5 and then stayed flat at 14 to 16. That training number includes random exploration moves, so the test score is the fairer one. It ran 1.24M steps at about 2,000 per second on one core.\n\nAcross the 5 seeds the bonus group gives GA 47.93 \u00b1 4.05 (range 41.85 to 52.52) and DQN 20.94 \u00b1 0.8 (range 20.11 to 22.27). The baseline run for seed 100 is not in the data I was given, so the baseline comparison uses seeds 101 to 104: GA averages 46.6 and DQN 21.0. The GA gap of about +1.3 is well inside the seed spread. The DQN gap is essentially zero.",
+    "diagnosis": "Both agents use the short vision, which only sees the next square, so they cannot plan around their own body. That is why most games end in body crashes. The board-full bonus fires only when the snake fills all 97 apples. This seed won 1 of 100 test games, and the three baseline seeds shown won 0. The GA does reach full-board games during training (best game 97 from about generation 212), so the bonus does occasionally affect the GA's selection, but rarely enough that its effect is smaller than the seed-to-seed noise. DQN sees the bonus even less often, which matches its unchanged score. Note that the four paired differences (same seed, bonus minus baseline) are all positive, from +0.7 to +5.2. Changing the reward changes training from the first generation, though, so pairing by seed does not cancel the noise. With four seeds and a spread of about 4, that pattern is not evidence of an effect.",
+    "learned": "One run is one seed, so judge it against the spread across seeds, not against one number. A reward that fires in only about 1 of 100 games moves the score much less than the luck of the seed does.",
+    "prediction_check": "The lesson's prediction held. The bonus did not matter on average (bonus group 47.93 versus about 46.6 for the baseline seeds shown), but one bonus run did look better than a baseline run. Seed 103 scored 52.52 against 43.68 for the worst baseline seed, a gap of about 8.8 that comes from seed luck alone."
+  },
+  "recommendations": [
+    {
+      "title": "Make the board-full bonus large",
+      "why": "If the win bonus is far larger, the snake should have a stronger reason to fill the board, so the number of test wins should rise clearly above 1 in 100. This tests whether a reward that actually fires can move the score or only the win count.",
+      "change": "Raise the board-full (win) bonus from 100 to 1000 and keep everything else the same.",
+      "prediction": "Test wins rise from 1 to about 3 to 10 out of 100 for the GA. The GA test mean stays within about 4 points of 52.5 because wins are still rare.",
+      "question": "Does a bonus that fires more often change the score, or only the number of full-board games?",
+      "new_lesson": false,
+      "lesson_slug": "c07-luck-or-skill",
+      "recipe": {
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "win": 1000.0
+        }
+      },
+      "config": {
+        "lesson": "c07-luck-or-skill",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "short"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "win": 1000.0
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 103
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "reward: win 100 \u2192 1000"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Give the snake rays vision as a control",
+      "why": "A change that should be large enough to clear the seed spread shows what a real effect looks like next to the noise. Rays look up to 4 squares along 8 lines, so they can see a body crash coming.",
+      "change": "Switch the vision from short to rays with depth 4, keeping the reward and the algorithm settings the same.",
+      "prediction": "The GA test mean moves well outside the bonus-group range of 41.9 to 52.5, and its body-crash share drops below 91 of 100 games.",
+      "question": "Can this setup detect a real effect that is clearly larger than seed-to-seed noise?",
+      "new_lesson": false,
+      "lesson_slug": "c07-luck-or-skill",
+      "recipe": {
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        }
+      },
+      "config": {
+        "lesson": "c07-luck-or-skill",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "win": 100.0
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 103
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "vision short \u2192 rays:depth=4"
+      ],
+      "launched": []
+    }
+  ],
+  "recommended": 0,
+  "ideas": [
+    {
+      "id": "idea-33",
+      "title": "Paired seed-difference view",
+      "kind": "dashboard",
+      "what": "Show, for each seed, the difference between two recipes next to the spread band of each group. The view would make a consistent but small gap visible as a single chart.",
+      "why": "The four same-seed differences here are all positive (+0.7 to +5.2), but the two groups still overlap. The current view makes it hard to see how that pattern compares with the noise.",
+      "expected": "Learners see whether a gap is consistent across seeds and how large it is relative to the spread, rather than comparing one best run with one worst run.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 16:30:53",
+      "source": {
+        "run": "c07-luck-or-skill/2026-10-20_131708-9",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-34",
+      "title": "Log full-board games during training",
+      "kind": "evaluation",
+      "what": "Count how many training games fill the board, per generation for the GA and per episode for DQN, and plot that count on the curve.",
+      "why": "The GA's best game reached 97 apples from about generation 212 onward, yet this seed won only 1 test game. The current logs cannot show how often the bonus actually fires during training.",
+      "expected": "A direct measure of how often a win bonus is reached during training, so learners can check the 'almost never' claim against data.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 16:30:53",
+      "source": {
+        "run": "c07-luck-or-skill/2026-10-20_131708-9",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    }
+  ]
+}

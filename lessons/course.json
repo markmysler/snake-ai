@@ -1,0 +1,175 @@
+{
+  "title": "Teach a snake: a short course in learning from rewards",
+  "about": "Nine lessons, each answering one question with one change. Every recipe is trained for 10 minutes with 3 seeds, so you can tell a real effect from luck. Recipes not listed are the same as the lesson they are compared with.",
+  "defaults": {"vision": "short", "reward": "score", "agents": ["ga", "dqn"], "time_budget_min": 10,
+               "width": 10, "height": 10, "seed": 0},
+  "seeds": 3,
+  "lessons": [
+    {
+      "lesson": "c01-two-ways-to-learn",
+      "title": "01 · Two ways to learn",
+      "question": "How do evolution (the GA) and Q-learning (DQN) learn the same game, from the same 11 inputs and the same reward?",
+      "change": "None. This is the baseline: the next lessons each change one thing in it.",
+      "predict": "After 10 minutes, which method scores more on the test games? Which one uses more experience (env steps) to get there?",
+      "explain": "The GA never computes a gradient: 200 networks each play 3 games, the best 10% are kept and the rest are replaced by mutated children of good parents. DQN trains one network to predict the future reward of each move from stored experience, and plays the move it rates highest (plus random moves while exploring). Both see the same 11 numbers: danger next to the head, the heading, and which way the apple is.",
+      "watch": "Switch the learning curve to Env steps with log x: the DQN line is far ahead at every amount of experience. Then look at how the test games ended.",
+      "terms": ["ga", "dqn", "vision.short", "c.test-score", "c.sample-efficiency", "c.wall-clock", "c.seed-spread"],
+      "pilot": ["01-short-vision"],
+      "recipes": [{"name": "baseline", "config": {}}],
+      "try": [
+        {"title": "A bigger board", "why": "On 15×15 every apple is further away. Does the GA's lead hold when games get longer?",
+         "config": {"width": 15, "height": 15}},
+        {"title": "Half the time", "why": "Train for 5 minutes. Which method has done most of its learning by then?",
+         "config": {"time_budget_min": 5}}
+      ]
+    },
+    {
+      "lesson": "c02-you-get-what-you-reward",
+      "title": "02 · You get what you reward",
+      "question": "What happens when the reward also pays the snake a little for every move it survives?",
+      "change": "Reward: add a survival bonus of 0.1 per move to the baseline's apple +10, death −10.",
+      "predict": "Will the snakes eat more, or find a way to collect the bonus without eating? Look at how the test games end.",
+      "explain": "A reward is the only thing a learner optimises. Surviving 100 moves is now worth as much as an apple, and a snake that circles safely never dies. It only starves when it goes 100 × its length moves without eating, and starving costs nothing here.",
+      "watch": "How the test games ended (wall, body, starved) and the steps per apple. Compare with lesson 01's baseline.",
+      "terms": ["reward.survival", "reward.starve", "c.game-end", "c.shaping"],
+      "compare": "c01-two-ways-to-learn/baseline",
+      "pilot": ["03-drop-survival-reward", "07-short-no-survival"],
+      "recipes": [{"name": "survival bonus", "config": {"reward": {"apple": 10, "death": 10, "survival": 0.1}}}],
+      "try": [
+        {"title": "Make starving cost something", "why": "Keep the survival bonus but add a starvation penalty of 30. Does the looping stop?",
+         "config": {"reward": {"apple": 10, "death": 10, "survival": 0.1, "starve": 30}}},
+        {"title": "A cost for every move instead", "why": "Replace the survival bonus with a hunger cost of 0.01 per move: now waiting is bad.",
+         "config": {"reward": {"apple": 10, "death": 10, "hunger": 0.01}}}
+      ]
+    },
+    {
+      "lesson": "c03-hints-and-shaping",
+      "title": "03 · Can hints speed learning up safely?",
+      "question": "Does a small hint for moving toward the apple help DQN learn faster, and can a hint mislead it?",
+      "change": "DQN only. Reward: no hint, a distance hint (+0.1 closer, −0.1 further), or a potential-based hint of the same size.",
+      "predict": "Which hint helps most early on? Does any of them change the final test score?",
+      "explain": "Reward shaping adds small rewards for progress. A plain distance hint can change which strategy is best: every step away from the apple now costs something, so safe detours look bad. The potential-based version is built so that it provably can't change the best strategy; it only points the way.",
+      "watch": "The first minutes of the learning curves (switch to Env steps), then the test scores and their spread across seeds.",
+      "terms": ["reward.distance", "reward.potential", "c.shaping", "dqn", "c.seed-spread"],
+      "recipes": [
+        {"name": "no hint", "config": {"agents": ["dqn"]}},
+        {"name": "distance hint", "config": {"agents": ["dqn"], "reward": {"apple": 10, "death": 10, "distance": 0.1}}},
+        {"name": "potential hint", "config": {"agents": ["dqn"], "reward": {"apple": 10, "death": 10, "potential": 0.1}}}
+      ],
+      "try": [
+        {"title": "A hint that is too loud", "why": "Make the distance hint 1.0, as big as a tenth of an apple. Does the snake start chasing the hint instead of the apple?",
+         "config": {"agents": ["dqn"], "reward": {"apple": 10, "death": 10, "distance": 1.0}}}
+      ]
+    },
+    {
+      "lesson": "c04-seeing-further",
+      "title": "04 · Does seeing further help?",
+      "question": "The baseline only sees one square around its head. Does looking further along 8 lines help it avoid traps?",
+      "change": "Vision: rays that look 4 squares, or 9 squares (across the whole board), along 8 directions instead of the 11 short hints.",
+      "predict": "Will 9 squares beat 4? Which method gains more from the extra inputs (28 instead of 11)?",
+      "explain": "Rays report how close the nearest wall, body part and apple are on each of 8 lines. More range means more warning about its own body, but also more inputs to learn from.",
+      "watch": "Use Inspect on a board to see the 8 rays and what each one found. Compare the test scores with lesson 01's baseline.",
+      "terms": ["vision.rays", "vision.rays.depth", "c.inputs", "c.test-score"],
+      "compare": "c01-two-ways-to-learn/baseline",
+      "pilot": ["04-window-vs-rays"],
+      "recipes": [
+        {"name": "rays 4", "config": {"vision": "rays:depth=4"}},
+        {"name": "rays 9", "config": {"vision": "rays:depth=9"}}
+      ],
+      "try": [
+        {"title": "A window instead of rays", "why": "Give it a 5×5 picture around the head instead (79 inputs). Does a picture beat rays?",
+         "config": {"vision": "window:radius=2"}}
+      ]
+    },
+    {
+      "lesson": "c05-more-information",
+      "title": "05 · Is more information always better?",
+      "question": "If the snake can see the whole board, it has everything it needs. Does it learn better than with rays?",
+      "change": "Vision: the whole board as pictures (1,083 inputs) instead of rays 4 (28 inputs).",
+      "predict": "Will seeing everything help or hurt in 10 minutes? Will the GA and DQN react the same way?",
+      "explain": "Every extra input is another set of weights to learn. The GA has to find good values for all of them by mutation and selection; DQN gets a gradient for each, but an MLP still has to discover that neighbouring squares are related.",
+      "watch": "Steps per second (training is slower), and how far each learning curve gets.",
+      "terms": ["vision.full", "c.inputs", "c.egocentric", "c.plateau"],
+      "compare": "c04-seeing-further/rays 4",
+      "pilot": ["02-full-vision"],
+      "recipes": [{"name": "whole board", "config": {"vision": "full"}}],
+      "try": [
+        {"title": "Train it four times longer", "why": "Is the whole board just slower to learn from, or worse? Give it 40 minutes.",
+         "config": {"vision": "full", "time_budget_min": 40}}
+      ]
+    },
+    {
+      "lesson": "c06-room-to-move",
+      "title": "06 · Knowing how much room is left",
+      "question": "The short-vision snake dies by trapping itself. What if it is told how much of the board each move keeps reachable?",
+      "change": "Vision: the 11 short hints plus 3 numbers, the share of free squares still reachable after moving straight, left or right.",
+      "predict": "How much will 3 extra numbers help, compared with 17 extra for rays? How will the endings change?",
+      "explain": "The room numbers come from a flood fill, a computation the network could hardly learn by itself from local hints. Hand-made features like this are how a small model gets knowledge it can't discover.",
+      "watch": "Use Inspect: the shaded pockets show what each move leaves. Then compare body crashes with lesson 01.",
+      "terms": ["vision.room", "c.game-end", "c.inputs"],
+      "compare": "c01-two-ways-to-learn/baseline",
+      "pilot": ["08-wall-crash-penalty", "09-ga-games-per-genome"],
+      "recipes": [{"name": "room", "config": {"vision": "room"}}],
+      "try": [
+        {"title": "Room plus a reward that hates traps", "why": "Make body crashes cost 30 and starving 30 (preset split_death). Do the two changes add up?",
+         "config": {"vision": "room", "reward": "split_death"}}
+      ]
+    },
+    {
+      "lesson": "c07-luck-or-skill",
+      "title": "07 · Luck or skill?",
+      "question": "How much do runs of the same recipe differ by chance, and can you tell a useless change from a real one?",
+      "change": "The baseline trained with 5 new seeds, then a 'board-full bonus' of +100 that a snake almost never reaches, also with 5 seeds.",
+      "predict": "The bonus should hardly matter: games that fill the board are rare. Will one of its runs still look better than a baseline run?",
+      "explain": "A seed fixes all the randomness of a run. Comparing two single runs mixes the effect of the change with the luck of the seeds. With several seeds per recipe you see the spread; only ranges that don't overlap show a difference you can trust.",
+      "watch": "The seed spread: dots for each seed's test score. Pick the best bonus run and the worst baseline run and compare them: it looks like an improvement.",
+      "terms": ["c.seed", "c.noise", "c.seed-spread", "reward.win"],
+      "seeds": 5,
+      "recipes": [
+        {"name": "baseline × 5", "config": {"seed": 100}},
+        {"name": "board-full bonus × 5", "config": {"seed": 100, "reward": {"apple": 10, "death": 10, "win": 100}}}
+      ],
+      "try": [
+        {"title": "Same recipe, 10 seeds", "why": "How wide does the spread get with 10 seeds? (Long: about 100 minutes.)",
+         "config": {"seed": 200}, "seeds": 10}
+      ]
+    },
+    {
+      "lesson": "c08-planning-horizon",
+      "title": "08 · How far ahead to plan",
+      "question": "DQN discounts future rewards with gamma. Does valuing the far future more help it avoid slow traps?",
+      "change": "DQN only. Discount (gamma) 0.99 instead of 0.95.",
+      "predict": "Gamma 0.95 effectively looks about 20 moves ahead, 0.99 about 100. Will looking further help in 10 minutes, or slow learning down?",
+      "explain": "A reward k moves away counts gamma^k: at 0.95 a crash 20 moves ahead is worth a third of an immediate one; at 0.99 it is still worth 80%. Longer horizons see more, but their targets are noisier and take longer to learn.",
+      "watch": "The learning curves over env steps, and the share of body crashes in the test games.",
+      "terms": ["dqn.gamma", "c.q-value", "c.plateau"],
+      "compare": "c03-hints-and-shaping/no hint",
+      "pilot": ["06-long-horizon-dqn"],
+      "recipes": [{"name": "gamma 0.99", "config": {"agents": [{"algorithm": "dqn", "params": {"gamma": 0.99}}]}}],
+      "try": [
+        {"title": "A short horizon", "why": "Gamma 0.8 looks about 5 moves ahead. Can it still learn to reach apples?",
+         "config": {"agents": [{"algorithm": "dqn", "params": {"gamma": 0.8}}]}}
+      ]
+    },
+    {
+      "lesson": "c09-tuning-evolution",
+      "title": "09 · Tuning evolution",
+      "question": "Which GA settings matter: judging each network on more games, or mutating less?",
+      "change": "GA only. Games per genome 10 instead of 3, or mutation rate 0.05 instead of 0.1.",
+      "predict": "More games make fitness fairer but each generation 3× slower. Fewer mutations change less per generation. Which wins in 10 minutes?",
+      "explain": "Fitness from 3 games is noisy: a lucky network can be kept over a better one (the winner's curse). More games per genome reduce that noise but cost time. The mutation rate sets how far children move from their parents: too high destroys what works, too low explores slowly.",
+      "watch": "The GA curves: the solid line follows the networks it keeps, the dotted one the whole generation. Generations per minute drop with 10 games.",
+      "terms": ["ga.games", "ga.mutation_rate", "c.kept-curve", "c.winners-curse"],
+      "pilot": ["09-ga-games-per-genome"],
+      "recipes": [
+        {"name": "GA baseline", "config": {"agents": ["ga"]}},
+        {"name": "10 games per genome", "config": {"agents": [{"algorithm": "ga", "params": {"games": 10}}]}},
+        {"name": "mutation rate 0.05", "config": {"agents": [{"algorithm": "ga", "params": {"mutation_rate": 0.05}}]}}
+      ],
+      "try": [
+        {"title": "A bigger population", "why": "500 networks per generation instead of 200: more variety, fewer generations.",
+         "config": {"agents": [{"algorithm": "ga", "params": {"population": 500}}]}}
+      ]
+    }
+  ]
+}

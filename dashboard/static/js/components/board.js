@@ -7,7 +7,7 @@ const MAX_MOVES_PER_FRAME = 40; // "max" speed
 const NEW_BEST_MS = 2500;
 
 export class Board {
-  // opts: {run, agent, title, color, small, waitingText, rank: () => int, flashNewBest}
+  // opts: {run, agent, title, color, small, waitingText, rank: () => int, flashNewBest, onInspect: (board) => void}
   constructor(opts) {
     this.o = opts;
     this.lineEl = h("span", { class: "line" });
@@ -22,7 +22,9 @@ export class Board {
       h("div", { class: "canvas-wrap" }, this.canvas, this.overlay),
       h("div", { class: "board-foot" }, this.lineEl, h("span", { class: "buttons" },
         h("button", { title: "Start a new game now", onclick: () => this.restart() }, opts.small ? "↻" : "Restart"),
-        this.freezeBtn)));
+        this.freezeBtn,
+        opts.onInspect && !opts.small ? h("button", { title: "Step through this game move by move: what the snake sees and "
+          + "what its network thinks", onclick: () => this.game && opts.onInspect(this) }, "Inspect") : null)));
     this.ctx = this.canvas.getContext("2d");
     this.game = null; this.pending = null; this.loading = false; this.token = 0;
     this.version = null; this.meta = null; this.frozen = false; this.frozenRank = null;

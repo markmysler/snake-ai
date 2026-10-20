@@ -60,9 +60,9 @@ def test_room_vision_sees_pockets():
 
 
 def test_history_rows_without_endings_load():
-    old = {k: "1" for k in HISTORY_KEYS if not k.startswith("end_")}
-    assert history_row(old)[-4:] == [None] * 4
-    assert history_row({**old, "end_wall": "3", "end_body": "97", "end_starved": "0", "end_won": "0"})[-4:] == [3, 97, 0, 0]
+    old = {k: "1" for k in HISTORY_KEYS if "end_" not in k and not k.startswith("pop_")}
+    assert history_row(old)[7:11] == [None] * 4
+    assert history_row({**old, "end_wall": "3", "end_body": "97", "end_starved": "0", "end_won": "0"})[7:11] == [3, 97, 0, 0]
 
 
 @pytest.mark.parametrize("script,extra", [("train_ga.py", ["--generations", "2", "--population", "20", "--workers", "1"]),
@@ -76,7 +76,10 @@ def test_trainers_record_endings(tmp_path, script, extra):
         rows = list(csv.DictReader(f))
     last = rows[-1]
     ends = [int(last[f"end_{k}"]) for k in ("wall", "body", "starved", "won")]
-    assert sum(ends) == min(100, int(last["total_games"]))
+    if agent == "dqn":
+        assert sum(ends) == min(100, int(last["total_games"]))
+    else:  # the GA's curve follows its 2 elites (6 games a generation) after generation 1 (all 60 games)
+        assert sum(ends) == 66 and sum(int(last[f"pop_end_{k}"]) for k in ("wall", "body", "starved", "won")) == 60
 
 
 def reference_room(env):

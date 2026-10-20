@@ -1,0 +1,239 @@
+{
+  "state": "done",
+  "model": "claude-haiku-5-5",
+  "created": "2026-10-20 15:40:00",
+  "seconds": 36.7,
+  "usage": {
+    "model": "claude-haiku-5-5",
+    "prompt_tokens": 19965,
+    "completion_tokens": 6780
+  },
+  "result": {
+    "headline": "The room vision lifts DQN's test score from 21.3 (baseline, same reward) to 38.4 for seed 0, and to 38.6 \u00b1 0.9 across three seeds, a clear gain; the GA's 32.1 (37.9 \u00b1 9.5 across seeds) cannot be compared cleanly because its reward changed too.",
+    "summary": "**DQN** (test mean 38.41 for seed 0; 38.63 \u00b1 0.92 across seeds 0\u20132) gained about 17 points over the lesson 01 baseline's dqn_score agent (21.31), which used the same reward. The seed spread is under 1 point, so this gain is far beyond seed noise. Its training curve reached about 21 by 0.93 min and then stayed flat at 20\u201323 until the 10-minute mark, while the greedy test score stayed around 38. Steps per game rose from 177 to 423 and steps per apple from 8 to 11, so the snake lives longer but wanders more per apple.\n\n**GA** (test mean 32.11 for seed 0; 37.89 \u00b1 9.52 across seeds, with values 32.11, 32.69, 48.88) changed both vision and reward: the baseline GA used the ga_classic reward (apple 100, survival 0.1), and this run uses apple 10 and death 10 for every agent. Its curve sat near 0.1\u20130.25 until about generation 52 (1.5 min), rose to 18 by 3.4 min and about 35 by 7 min, and ended at 38.8 with its population mean still climbing (27.3). It was not converged when the time ran out. It completed about 50 million environment steps in 10 minutes (roughly 83k steps per second), against about 1.4 million for DQN (roughly 2.4k steps per second). A score of about 38 cost the GA about 35 times more environment steps than DQN, so DQN was far more sample-efficient, while the GA was far faster per second.\n\nEnding types for seed 0: GA had 36 wall and 64 body crashes; DQN had 8 wall and 92 body crashes. Across the three seeds, body crashes averaged about 82% of GA games and about 86% of DQN games, against 80% for the baseline DQN. Starvation and wins were negligible.",
+    "diagnosis": "The room feature gives DQN the one thing the short vision lacks: whether a move leaves enough open space. That explains the jump from 21 to 38 and the longer games. But the lesson's premise was that the snake dies by trapping itself, and the run does not show that the feature reduced trapping. Body crashes stayed dominant, and their share rose slightly (80% to about 86%). Room tells the network how much space is left, but the reward (death 10 for any crash) does not penalise a body crash more than a wall crash, so the network has little reason to avoid trapping itself beyond what the room number already tells it.\n\nThe gap between DQN's training mean (about 21) and its greedy test score (about 38) is mostly exploration. Epsilon-greedy moves are random, and the training mean includes them, so the training curve understates the learned policy. The GA's curve is different: its population mean is dragged down by mutated children, and its elites are the networks that the test score reflects. The GA's seed spread (32 to 49) is large for one 10-minute run, so its difference from DQN is not reliable on this evidence.",
+    "learned": "A hand-made feature that encodes a computation the network cannot easily learn (here, reachable space) can raise the score a lot. Check the ending types too: the feature lengthened the games, but it did not reduce the body crashes that it was meant to prevent.",
+    "prediction_check": null
+  },
+  "recommendations": [
+    {
+      "title": "Add a stronger penalty for body crashes",
+      "why": "Body crashes still make up about 86% of DQN's games with the room feature, so the trap-avoidance premise is not yet met. Making body crashes and starvation cost 30 each (the split_death preset) should push the snake away from trapping, and tests whether the two changes add up.",
+      "change": "Switch the reward from score to the split_death preset (apple 10, death_wall 10, death_body 30, starve 30), keeping the room vision.",
+      "prediction": "DQN body-crash share falls below 75% (from about 86% across seeds), and its test mean stays between 33 and 42. The GA changes too, because the reward is shared, so judge it with care.",
+      "question": "Does a heavier penalty for body crashes reduce trapping and improve DQN's score on top of the room feature?",
+      "new_lesson": true,
+      "lesson_slug": "room-with-trap-penalty",
+      "recipe": {
+        "reward": {
+          "apple": 10.0,
+          "death_wall": 10.0,
+          "death_body": 30.0,
+          "starve": 30.0
+        }
+      },
+      "config": {
+        "lesson": "c06-room-to-move",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "room"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death_wall": 10.0,
+          "death_body": 30.0,
+          "starve": 30.0
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "reward: \u2212 death",
+        "reward: + death_wall 10",
+        "reward: + death_body 30",
+        "reward: + starve 30"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Try rays vision with the room reward",
+      "why": "Rays give 28 inputs, much more spatial detail than room's 14, but it is unclear whether that detail helps beyond the room number. This run's room feature already captures reachable space, so the extra detail may add little.",
+      "change": "Change the vision from room to rays with depth 4, keeping the reward and the 10-minute time.",
+      "prediction": "DQN test mean lands between 36 and 42, which is no clear gain over the room's 38.6 (three-seed mean). Body crashes stay above 75%.",
+      "question": "Do 17 ray inputs beat 3 reachable-space numbers for DQN in the same time?",
+      "new_lesson": true,
+      "lesson_slug": "rays-vs-room",
+      "recipe": {
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        }
+      },
+      "config": {
+        "lesson": "c06-room-to-move",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "vision room \u2192 rays:depth=4"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Give the GA twenty minutes to converge",
+      "why": "The GA's population mean was still rising at 10 minutes (27.3, up from 23.2) and its test score varied widely across seeds (32 to 49). A longer run tests whether the GA's ceiling is time or the settings.",
+      "change": "Raise time_budget_min from 10 to 20, keeping the room vision and the reward.",
+      "prediction": "The GA test mean for seed 0 rises to 42 or more, and the GA's population mean keeps rising in the last few minutes. DQN stays within 3 points of 38.6.",
+      "question": "Is the GA held back mainly by training time, and does its best network keep improving with more generations?",
+      "new_lesson": true,
+      "lesson_slug": "room-longer-ga",
+      "recipe": {
+        "time_budget_min": 20.0
+      },
+      "config": {
+        "lesson": "c06-room-to-move",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "room"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 20.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "training time (min) 10 \u2192 20"
+      ],
+      "launched": []
+    }
+  ],
+  "recommended": 0,
+  "ideas": [
+    {
+      "id": "idea-32",
+      "title": "Show greedy test score on DQN's training curve",
+      "kind": "dashboard",
+      "what": "Plot the greedy evaluation score (the same score used for the saved model) alongside DQN's training mean, so the learner can see the policy's progress without exploration noise.",
+      "why": "DQN's training mean stayed flat at about 21 from 1 to 10 minutes, while its greedy test score was about 38. The curve as drawn suggests DQN had stopped learning, which is misleading.",
+      "expected": "Makes the training curve match the test score, avoiding the apparent plateau; no change to the agent.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 15:40:00",
+      "source": {
+        "run": "c06-room-to-move/2026-10-20_131708",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    }
+  ]
+}

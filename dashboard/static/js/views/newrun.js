@@ -7,7 +7,8 @@ const clone = (o) => JSON.parse(JSON.stringify(o));
 
 export function mount(main, fromId, app) {
   const cat = app.catalog;
-  // #new/draft = an AI recommendation opened with "Edit first" (keeps its name, prediction and origin)
+  // #new/draft = an AI recommendation opened with "Edit first" (keeps its name, prediction and origin),
+  // or a course exercise ("Try this": draft.exercise names the lesson)
   const draft = fromId === "draft" ? app.draft : null;
   const source = fromId && !draft ? app.run(fromId) : null;
   const cfg = clone(draft ? draft.config : source ? source.config : cat.defaults);
@@ -22,8 +23,10 @@ export function mount(main, fromId, app) {
                   time: h("section", { class: "card" }) };
   const summary = h("aside", { class: "summary" });
   main.append(h("div", { class: "view" },
-    h("div", { class: "page-head" }, h("div", {}, h("h1", {}, draft ? "Recommended run" : source ? "Run again" : "New run"),
-      h("p", { class: "lead" }, draft
+    h("div", { class: "page-head" }, h("div", {}, h("h1", {}, draft?.exercise ? "Try this" : draft ? "Recommended run" : source ? "Run again" : "New run"),
+      h("p", { class: "lead" }, draft?.exercise
+        ? `“${draft.title}”, an exercise from ${draft.exercise}. ${draft.why || ""} Adjust anything, then start it.`
+        : draft
         ? `“${draft.title}”, recommended by the AI analysis of ${draft.origin.run}. Adjust anything, then start it.`
         : source
         ? `Settings copied from ${source.id}. Change one thing so you can tell what caused the difference.`

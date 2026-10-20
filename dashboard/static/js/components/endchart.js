@@ -1,12 +1,16 @@
 // How training games ended over time: a 100% stacked area per agent (wall / body / starved / won shares
 // of the last 100 training games at each stats row). Same x-axis modes as the learning-curve chart.
+// GA agents can also show the whole generation (columns 12..15) instead of the elites it keeps.
 import { cssVar } from "../util.js";
 import { X_MODES } from "./linechart.js";
 import { ENDS } from "./spread.js";
 
 const END_COL = 7;  // history columns 7..10 = end_wall, end_body, end_starved, end_won (see dashboard/store.py)
+const POP_END_COL = 12;  // 12..15 = pop_end_wall..pop_end_won
 
-export const hasEndings = (rows) => (rows || []).some((r) => r[END_COL] !== null && r[END_COL] !== undefined);
+const has = (rows, col) => (rows || []).some((r) => r[col] !== null && r[col] !== undefined);
+export const hasEndings = (rows) => has(rows, END_COL);
+export const hasPopEndings = (rows) => has(rows, POP_END_COL);
 
 export class EndChart {
   constructor(canvas) {
@@ -31,15 +35,15 @@ export class EndChart {
     });
   }
 
-  set(rows, x) {
-    const mode = X_MODES[x];
-    const pts = (rows || []).filter((r) => r[END_COL] !== null && r[END_COL] !== undefined);
+  set(rows, x, pop = false) {
+    const mode = X_MODES[x], col = pop ? POP_END_COL : END_COL;
+    const pts = (rows || []).filter((r) => r[col] !== null && r[col] !== undefined);
     const colors = { wall: cssVar("--end-wall"), body: cssVar("--end-body"), starved: cssVar("--end-starved"), won: cssVar("--end-won") };
     this.chart.data.datasets = ENDS.map(([k, label], j) => ({
       label, borderColor: colors[k], backgroundColor: colors[k] + "cc", fill: j ? "-1" : "origin", stack: "ends",
       data: pts.map((r) => {
-        const total = r[7] + r[8] + r[9] + r[10] || 1;
-        return { x: r[mode.col], y: (r[END_COL + j] / total) * 100 };
+        const total = r[col] + r[col + 1] + r[col + 2] + r[col + 3] || 1;
+        return { x: r[mode.col], y: (r[col + j] / total) * 100 };
       }),
     }));
     this.chart.options.scales.x.ticks.callback = (v) => mode.fmt(v);

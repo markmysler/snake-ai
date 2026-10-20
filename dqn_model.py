@@ -47,6 +47,9 @@ class TorchPolicy:
         self.net = net
 
     @torch.no_grad()
+    def scores(self, state):
+        """Q-values for left, straight, right: the expected future reward of each move."""
+        return self.net(torch.from_numpy(np.asarray(state, dtype=np.float32))).numpy()
+
     def act(self, state):
-        q = self.net(torch.from_numpy(np.asarray(state, dtype=np.float32)))
-        return int(q.argmax())
+        return int(np.argmax(self.scores(state)))

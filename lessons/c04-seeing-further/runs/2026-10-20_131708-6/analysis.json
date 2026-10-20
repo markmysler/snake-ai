@@ -1,0 +1,252 @@
+{
+  "state": "done",
+  "model": "claude-haiku-5-5",
+  "created": "2026-10-20 15:07:20",
+  "seconds": 35.7,
+  "usage": {
+    "model": "claude-haiku-5-5",
+    "prompt_tokens": 20113,
+    "completion_tokens": 6765
+  },
+  "result": {
+    "headline": "Seeing further did not clearly help the GA: rays 9 averaged 29.3 test points over 3 seeds against about 34.7 for rays 4 (2 seeds shown), and the DQN was flat at 26.8 against about 26.5. Seed 2's GA starved in 36 of 100 test games.",
+    "summary": "**Genetic algorithm (GA, evolving a population of networks without gradients):** Across seeds 0, 1 and 2 the GA's greedy test means were 32.07, 32.03 and 23.93 (mean 29.34, std 4.69). Seeds 0 and 1 mostly crashed (wall and body), with 0 and 5 starved games. Seed 2 starved in 36 games, took 1,038 steps per game and needed 43 steps per apple, so it wandered until it ran out of time. Its learning curve rose from about 0 to 17 by 0.8 min and to 30.2 by 10 min, still climbing slowly at the end. It ran about 68 million environment steps (about 113k steps per second).\n\n**Deep Q-network (DQN, a gradient-trained value learner):** Test means were 27.38, 27.28 and 25.60 (mean 26.75, std 1.0). Its crashes were mostly into its own body (69 of 100 in seed 2), with 9 steps per apple, so it dies quickly rather than wandering. Its training mean plateaued near 19 to 20 after about 2 minutes, while greedy tests scored about 26. That gap is partly exploration, since training games include random moves. It ran about 1.1 million steps (about 2 thousand steps per second).\n\n**Comparison notes:** Only two rays-4 seeds appear in this run's data (seeds 1 and 2: GA 33.23 and 36.07, DQN 27.89 and 25.12). The GA difference (about 5 points) is within roughly one standard deviation of the seed spread, so treat it as a lean, not a result. The DQN result is flat. The baseline (short vision, one seed) scored DQN 21.31. That suggests rays helped the DQN by about 5 points, but the baseline is a single seed and the GA baseline used a different reward (ga_classic), so its GA score of 51.55 cannot be compared with these runs.",
+    "diagnosis": "The GA's weakest seed fits a reward problem. The score reward gives 0 per move, -10 for a crash, and nothing for starving. A snake that loops in circles therefore scores better than one that dies, so selection can favour loopers. Seed 2 shows this, with 36 starved games and 43 steps per apple. Seeds 0 and 1, which crash instead, do better. The DQN has the opposite pattern: it learns quickly (14.75 training mean after under 1 minute, from about 111k steps) and then plateaus, and its crashes are fast body collisions. Nine-square rays give the DQN more to see, which plausibly explains the gain over the short baseline. For the GA, the extra inputs add weights to evolve, which may slow search within 10 minutes. With 3 seeds per group, these are hypotheses, not conclusions.",
+    "learned": "Judge a change by its seed spread, not one run, and check how each game ended: a similar test score can hide a crashing snake and a wandering one. Also, the GA and DQN receive the same wall-clock time but very different numbers of steps, so compare them per step as well as by score.",
+    "prediction_check": null
+  },
+  "recommendations": [
+    {
+      "title": "Add a starvation penalty to the score reward",
+      "why": "Starving currently costs nothing, so looping can beat dying for the GA. Adding a starve penalty should cut seed 2's 36 starved games and lift its GA score toward the other seeds (about 32).",
+      "change": "Add a starve penalty of 10 to the score reward, so the reward is apple 10, death 10 and starve 10.",
+      "prediction": "GA starved share falls from 36% to under 10% of test games, and the GA 3-seed mean rises from 29.3 to about 32 or more. DQN changes by less than 3 points.",
+      "question": "Is the GA's weak seed caused by looping that the reward allows?",
+      "new_lesson": true,
+      "lesson_slug": "starve-penalty-with-rays",
+      "recipe": {
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "starve": 10.0
+        }
+      },
+      "config": {
+        "lesson": "c04-seeing-further",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "rays",
+          "depth": 9
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "starve": 10.0
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 2
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "reward: + starve 10"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Train twice as long to see if the GA is still improving",
+      "why": "The GA was still rising at the end (28.75 at 7.6 min, 30.24 at 10 min), so 10 minutes may understate it. A longer run tests whether the rays-9 deficit is a time limit.",
+      "change": "Raise the time budget from 10 to 20 minutes and keep everything else the same.",
+      "prediction": "GA test mean rises to 31 to 34 (from 23.9 for this seed). DQN plateaus near 26 and changes by less than 2 points.",
+      "question": "Does more training time close the GA gap between rays 9 and rays 4?",
+      "new_lesson": false,
+      "lesson_slug": "c04-seeing-further",
+      "recipe": {
+        "time_budget_min": 20.0
+      },
+      "config": {
+        "lesson": "c04-seeing-further",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "rays",
+          "depth": 9
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 20.0,
+        "width": 10,
+        "height": 10,
+        "seed": 2
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "training time (min) 10 \u2192 20"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Try a picture of the board instead of rays",
+      "why": "Rays give 28 inputs but only along 8 lines. A 5x5 picture around the head (79 inputs) shows the squares near the body directly, which may help the DQN avoid body collisions, its main cause of death.",
+      "change": "Change the vision from rays (depth 9) to a window with radius 2.",
+      "prediction": "DQN test mean stays within about 2 points of 26.8, and its body-collision share falls below 60% of test games. The GA changes less than the DQN.",
+      "question": "Does a picture of the squares near the head beat rays at the same time budget?",
+      "new_lesson": true,
+      "lesson_slug": "picture-vs-rays",
+      "recipe": {
+        "vision": {
+          "type": "window",
+          "radius": 2
+        }
+      },
+      "config": {
+        "lesson": "c04-seeing-further",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "window",
+          "radius": 2
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 2
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "vision rays:depth=9 \u2192 window:radius=2"
+      ],
+      "launched": []
+    }
+  ],
+  "recommended": 0,
+  "ideas": [
+    {
+      "id": "idea-27",
+      "title": "Final exploration floor for DQN",
+      "kind": "setting",
+      "what": "Add a setting for the exploration rate the DQN keeps at the end of training (for example 0.02), so the training mean is measured with less random play. Only the decay schedule is currently exposed.",
+      "why": "The DQN's training mean plateaus at 19 to 20 while its greedy test score is about 26. Part of that gap is random moves in training games, which makes the training curve hard to read.",
+      "expected": "The training mean should move closer to the test score (within about 2 to 3 points), so the curves become more useful for judging progress.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 15:07:20",
+      "source": {
+        "run": "c04-seeing-further/2026-10-20_131708-6",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-28",
+      "title": "Report test results by seed as a spread",
+      "kind": "dashboard",
+      "what": "On the seed-group view, show each seed's test mean and game-ending mix as a small chart next to the group mean, with the spread shown as error bars.",
+      "why": "The GA's group mean (29.3) hides one seed that starved in 36% of games and two that did not starve at all. A reader can miss that without opening each run.",
+      "expected": "Readers see weak seeds and failure modes at a glance, so fewer conclusions rest on one seed.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 15:07:20",
+      "source": {
+        "run": "c04-seeing-further/2026-10-20_131708-6",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    }
+  ]
+}

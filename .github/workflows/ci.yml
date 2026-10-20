@@ -1,0 +1,39 @@
+# Tests on Linux, Windows and macOS with the oldest and newest supported Python, plus the Docker image.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: pytest (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - name: Install CPU-only PyTorch (Linux)
+        if: runner.os == 'Linux'
+        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Install requirements
+        run: pip install -r requirements.txt
+      - name: Run the tests
+        run: python -m pytest -q tests
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: docker build -t snake-ai .
+      - name: Run the tests inside the image
+        run: docker run --rm snake-ai python -m pytest -q tests

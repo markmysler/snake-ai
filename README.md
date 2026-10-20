@@ -2,6 +2,8 @@
 
 A learning project and a small lab: neural networks learn to play Snake, and you can watch them do it. You decide what each snake **sees**, how it is **rewarded**, and which **algorithm** learns. Every run is saved with its exact recipe, so anyone can repeat it, change one thing, and compare.
 
+<p align="center"><img src="docs/img/boards.gif" alt="Three trained snakes playing side by side: a genetic algorithm and two DQN agents" width="720"></p>
+
 - **Two training algorithms:** a genetic algorithm (evolution, numpy) and Deep Q-learning (PyTorch).
 - **Five visions:**
   - the 11 hints from lesson 01;
@@ -11,12 +13,32 @@ A learning project and a small lab: neural networks learn to play Snake, and you
   - the 11 hints plus *room to move*: how much of the board each move keeps reachable.
 - **Ten reward features to mix:** apple, death (or separate wall and body crash penalties), starvation, board-full, distance hint, potential-based hint, hunger, survival. Conflicting ones are blocked.
 - **A browser dashboard** to launch, watch, browse, delete and compare runs, live.
+- **Inspect mode:** step through any game move by move and see what the snake saw (drawn on the board, plus the raw inputs) and how strongly its network preferred each move.
+- **A nine-lesson course** (`course.py`): one question and one change per lesson, every recipe trained with 3 seeds, with exercises to try next.
 - **Adapts to any machine:** it measures CPU cores and RAM and plans each run's workers, threads and memory to fit.
 - **AI analysis (optional):** an LLM explains what a run did and why, writes it into the lesson, and suggests next runs. The recommended run starts with one click. Ideas that need new code are collected in an Ideas list and reviewed together.
 
+## First 15 minutes
+
+1. **Start the lab.** Install it (below), then run `python run_all.py --dashboard-only`. The dashboard opens in your browser.
+2. **Watch the baseline.** In **Runs**, find *01 · Short vision (the baseline)* in the Notebook and press **Watch**. Three snakes
+   trained for 10 minutes play their saved best models. Press **Inspect** under a board: step with ← → and see the three danger
+   hints and the apple direction it gets, and how sure its network is of each move.
+3. **Change one thing.** Press **Run again**, pick the vision *Adjacent + room to move*, set the training time to 3 minutes and
+   press **Start training**. Write down your prediction first: will knowing how much room each move leaves help?
+4. **Compare.** When it has finished and been tested (about 4 minutes), tick both runs in **Runs** and press **Compare**.
+   *What changed* should list the vision (and the time). *Is the difference real?* says what one seed each can and can't tell you.
+   That is why every course lesson trains its recipes with 3 seeds.
+5. **Optional: ask the AI.** With an API key in `.env` (see below), press **Analyze this run** in Watch: it explains what
+   happened and suggests the next run, which starts with one click.
+
+Then work through the course: **Runs → 01 · Two ways to learn → Train this lesson**, one lesson at a time, or the whole
+course overnight with `python course.py run all --wait`.
+
 ## Install
 
-Python 3.10+ on Windows, Linux or macOS. Tested on Windows 11 (Python 3.13) and Linux (Python 3.10 and 3.12, in Docker).
+Python 3.10+ on Windows, Linux or macOS. Continuous integration runs the tests on Linux, Windows and macOS with Python 3.10
+and 3.13, and in the Docker image.
 
 ```bash
 # CPU-only PyTorch is much smaller than the default build and is all this project needs:
@@ -51,17 +73,41 @@ The dashboard opens at <http://127.0.0.1:8000/>; if that port is busy it moves t
 
 ## The dashboard
 
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/img/watch-dark.webp"><img src="docs/img/watch-light.webp" alt="Watch: test scores per agent, how the test games ended, and the best snakes playing"></picture>
+
 Seven tabs, each answering one question.
 
 | Tab | Question | What's on it |
 |---|---|---|
 | **Runs** | What have we tried? | Runs training now (progress, Stop & save) · this machine and how many runs may train at once · every saved run grouped by lesson, with search and filters · per run: Watch, Run again, Edit (name / note / lesson), Delete · tick up to 3 runs to compare · "Read lesson" opens the lesson write-up |
 | **New run** | What do I want to test? | 1 lesson + your prediction · 2 algorithms (with advanced settings) · 3 vision (with its settings and input count) · 4 reward features (presets; conflicting features are disabled with the reason) · 5 time, board size, seed. The side panel shows the recipe, the CPU and memory plan for this machine, and any warnings. "Run again" opens an old run's recipe here. |
-| **Watch** | How is one run doing? | A headline number per agent (test score once evaluated, otherwise the live mean of the last 100 games), with **how its test games ended** (hit a wall / hit itself / starved / filled the board) and moves per game and per apple · **Seed spread** for a run trained with several seeds (each seed's test score as a dot) · **AI analysis** of finished runs (headline, what we learned, what happened and why, 2–3 recommended next runs with Launch / Edit first) · the best snakes playing, with speed / pause / restart / freeze controls · one learning-curve chart (mean or best score over time, env steps or games; log x) · collapsible: GA population (16 genomes at once), a numbers table, the full recipe |
+| **Watch** | How is one run doing? | A headline number per agent (test score once evaluated, otherwise the live mean of the last 100 games), with **how its test games ended** (hit a wall / hit itself / starved / filled the board) and moves per game and per apple · **Seed spread** for a run trained with several seeds (each seed's test score as a dot) · **AI analysis** of finished runs (headline, what we learned, what happened and why, 2–3 recommended next runs with Launch / Edit first) · the best snakes playing, with speed / pause / restart / freeze controls · **Inspect** any game move by move (below) · one learning-curve chart (mean or best score over time, env steps or games; log x) · collapsible: GA population (16 genomes at once), a numbers table, the full recipe |
 | **Compare** | Did the change help? | Up to 3 runs, each with a fixed color · **What changed**: settings that differ, highlighted (one difference = a clean experiment) · **How they learned**: one chart per algorithm, all on the same y-scale · **Test results**: 100 fixed games per saved model, best in bold, and how those games ended · **Is the difference real?**: each recipe's test score across its seeds on one axis, with a verdict (ranges that don't overlap = a real difference; overlapping = could be luck; a single seed = can't tell, or *likely real* when it lies far outside the other recipe's spread) · optional side-by-side games |
 | **Best** | What has worked best so far? | The best saved model of each algorithm as headline tiles · ranked tables of every tested model (group by algorithm, vision or reward), with test score bars on one shared scale · **Recipe** opens the exact settings that produced a model, with non-default settings in bold · Watch / Run again |
 | **Ideas** | What should the lab be able to do next? | Every improvement an AI analysis proposed that needs new code (a new vision, reward, algorithm, setting, chart or tool), from all runs · **Review** asks the LLM which to build next: it merges duplicates, ranks them by evidence and effort, and says how to build each one · mark ideas planned, done or dismissed · earlier reviews are kept |
 | **Learn** | What does this setting or word mean? | A glossary of every algorithm, setting, vision and reward feature, plus general terms (epsilon, fitness, sample efficiency…) · each setting says what raising or lowering it does · searchable. The **?** next to every option in New run and Best opens its entry, and every AI recommendation lists the terms it uses |
+
+| | |
+|---|---|
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/img/compare-dark.webp"><img src="docs/img/compare-light.webp" alt="Compare: what changed, learning curves on one scale, test results and the seed-spread verdict"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/img/runs-dark.webp"><img src="docs/img/runs-light.webp" alt="Runs: the course, each lesson with its recipes, seeds and exercises"></picture> |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/img/learning-dark.webp"><img src="docs/img/learning-light.webp" alt="How it learned: the mean score of each agent over time"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/img/best-dark.webp"><img src="docs/img/best-light.webp" alt="Best: the best saved model of each algorithm and the recipe that produced it"></picture> |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/img/learn-dark.webp"><img src="docs/img/learn-light.webp" alt="Learn: a glossary of every setting, vision, reward and concept"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/img/ideas-dark.webp"><img src="docs/img/ideas-light.webp" alt="Ideas: improvements proposed by AI analyses, with a review of what to build next"></picture> |
+
+### Inspect: what the snake sees
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/img/inspect-dark.webp"><img src="docs/img/inspect-light.webp" alt="Inspect mode: a rays snake mid-game with its 8 rays drawn on the board, its move preferences and its 28 inputs"></picture>
+
+Press **Inspect** under any board in Watch to step through that game (it is replayed exactly from its seed and the model
+version). For every move you see:
+- **what the vision looks at, drawn on the board:** the danger arrows and apple direction of `short`, the 8 rays of `rays`
+  with what each one hit, the box of `window`, each move's reachable pocket of `room` with its share. A band around the
+  board stands for the wall;
+- **how much the network preferred each move:** the GA's three outputs or DQN's Q-values, as shares (softmax) with the raw
+  numbers, and the move it chose;
+- **the inputs themselves:** a named list for the small visions, or the pictures the network gets for `window` and `full`
+  (centred on the head and turned so the snake faces up).
+
+Use ← → (or the slider) to step, space to play, Home / End for the first and last move. The last move shows how the game ended.
 
 How the design follows data-viz practice:
 - Controls sit in one row above the charts they affect.
@@ -122,7 +168,7 @@ Presets:
 - `ga_classic` = apple×100 + survival 0.1. This is the GA fitness from lessons 01–02.
 - `split_death` = apple + wall crash −10 + body crash −30 + starving −30. Starving costs as much as the worst crash; otherwise looping until it starves becomes the safe way out, and the New run form warns about it.
 
-The GA uses the same reward as the DQN: its fitness is a genome's average total reward per game. One warning: with the plain `score` reward the GA barely gets started. Every early genome scores about −10, so selection has nothing to choose between. A survival or distance signal fixes that, which makes a good lesson.
+The GA uses the same reward as the DQN: its fitness is a genome's average total reward per game. With the plain `score` reward the GA starts slowly: early on almost every genome scores −10, so selection has little to choose between until a few genomes stumble onto apples. A survival or distance signal speeds that up (and lesson 02 of the course shows what a survival bonus costs).
 
 ### Algorithms (`algorithms.py`)
 
@@ -150,7 +196,15 @@ how it ended: hit a wall, hit itself, starved (100 × length moves without eatin
 Moves per apple tell the same story: around 10 is efficient, hundreds means wandering. Runs recorded before this existed were
 backfilled with `python lessons.py backfill`. Because the test games use fixed seeds, every model reproduced its stored scores exactly.
 
-**How training games ended.** The trainers also record how their last 100 *training* games ended at every stats row. Watch charts the shares over time, one small chart per agent, so you can see *when* the mix shifts: starving creeping up when a reward pays for wandering, or body crashes taking over as the snake grows. Training games include DQN's random moves and the GA's whole population, so they differ from the test games. Runs recorded before this was added don't have it.
+**How training games ended.** The trainers also record how their last 100 *training* games ended at every stats row. Watch charts the shares over time, one small chart per agent, so you can see *when* the mix shifts: starving creeping up when a reward pays for wandering, or body crashes taking over as the snake grows. DQN's training games include its random exploration moves, so they differ from the test games. Runs recorded before this was added don't have it.
+
+**The GA's curve follows the networks it keeps.** Each generation is mostly mutated children, and most mutations make a
+network worse. So the GA's training mean (and its endings chart) follows its *elites*: the networks it carries unchanged into
+the next generation, scored on that generation's new games. Scoring them on the games they were picked on would overstate them
+(the *winner's curse*). The whole generation is recorded too (`pop_mean_score`, `pop_end_*` in the CSV) and drawn as a thin
+dotted line; the endings chart has a *Kept networks / Whole generation* switch. Runs recorded before this change only have the
+last ~33 children of each generation, which made the GA look worse and starve more than the networks it kept; Watch and
+Compare say so and draw those curves dashed.
 
 **Seeds.** One run is one seed, and a different seed can give a noticeably different score. Set **Seeds** in New run (or `--seeds N`)
 to train the recipe N times with seeds *seed, seed+1, …*: a **seed group**.
@@ -163,13 +217,50 @@ to train the recipe N times with seeds *seed, seed+1, …*: a **seed group**.
 The queue trains as many runs at once as the Runs tab allows. Raise it to finish a group sooner, but runs then share the CPU, so
 wall-clock speed is not comparable with runs trained alone.
 
-## Lessons: the lab notebook
+## Lessons: the course and the notebook
 
 [`lessons/`](lessons/README.md) is where all of it is kept. Each lesson asks one question. It holds:
 - a write-up (`LESSON.md`);
 - every run (`runs/<id>/`, with `run.json`, the stats CSVs, the best model of each agent, and logs).
 
-The Results block in each `LESSON.md` and the index in `lessons/README.md` are regenerated automatically. Everything else in `LESSON.md` is yours. Read the lessons in order:
+The Results block in each `LESSON.md` and the index in `lessons/README.md` are regenerated automatically. Everything else in `LESSON.md` is yours.
+
+**The course** ([`lessons/course.json`](lessons/course.json), `course.py`) is the path for learners: nine lessons, each with one
+question and one change, every recipe trained for 10 minutes with 3 seeds (5 for *Luck or skill?*).
+
+| # | Question | The one change |
+|---|---|---|
+| 01 | How do evolution and Q-learning learn the same game? | baseline: short vision, `score` reward |
+| 02 | You get what you reward | + a survival bonus |
+| 03 | Can hints speed learning up safely? | DQN: no hint vs distance vs potential-based hint |
+| 04 | Does seeing further help? | rays 4 and rays 9 instead of short |
+| 05 | Is more information always better? | the whole board instead of rays 4 |
+| 06 | Knowing how much room is left | room instead of short |
+| 07 | Luck or skill? | 5 seeds, then a bonus that can't matter |
+| 08 | How far ahead to plan | DQN gamma 0.99 instead of 0.95 |
+| 09 | Tuning evolution | GA: 10 games per genome, or mutation rate 0.05 |
+
+Each lesson's `LESSON.md` starts with a block generated from `course.json` (links to the previous and next lesson, the
+question, the change, a prediction prompt, background, what to watch, its recipes and what each changes, and glossary
+terms) and ends with **Try this** exercises. In between are the generated results (with the seed spread and how the games
+ended), the AI analysis of each seed group when an API key is set, and **What we learned**, which is yours to write.
+
+In **Runs**, the course comes first: each lesson shows its question, which recipes are trained (seeds done of 3), its terms,
+**Train this lesson** (queues the missing recipes), **Compare** (its recipes and what they change from, with the seed-spread
+verdict) and its **Try this** exercises, which open in New run.
+
+```bash
+python course.py list                          # what is trained so far
+python course.py run 4                         # queue lesson 4 (the dashboard trains it)
+python course.py run all --wait --parallel 2   # train the whole course here, 2 runs at a time (about 4 hours)
+python course.py check                         # what is missing: runs, "What we learned", one-change recipes
+python course.py write                         # rewrite the generated blocks after editing course.json
+```
+
+The whole course is 49 runs of 10 minutes: about 8 hours one at a time. Each run records how many runs shared the
+machine, and the course uses one setting for all its runs, so wall-clock comparisons stay fair.
+
+**The notebook** is every other lesson: your own, and the experiments that came before the course (several were its pilots).
 1. **01 · Short vision:** the baseline. How the GA and DQN learn.
 2. **02 · Full vision:** more information isn't free. DQN learned just as well per step but ran 5× slower; the GA learned much worse.
 
@@ -251,6 +342,8 @@ python analysis.py run <lesson>/<run-id>                    # AI analysis of a f
 python analysis.py show <lesson>/<run-id>                   # print it
 python analysis.py launch <lesson>/<run-id> 1               # queue recommendation 1 (the dashboard starts it)
 python ideas.py list | review | status <idea-id> planned   # the ideas list and its AI review
+python course.py list | run <n>|all [--wait] [--parallel N] | check | write   # the course (also: python lessons.py course ...)
+python tools/screenshots.py [--channel msedge]              # re-shoot the README images (pip install -r requirements-dev.txt)
 python llm.py                                               # check the LLM settings with a tiny request
 python system.py                                            # what this machine has
 python -m pytest -s tests/                                  # env, visions, rewards, library, API tests
@@ -265,6 +358,8 @@ The command line, the recipe and the New run form all read from the same registr
 **A new vision** (`vision.py`):
 1. Write `view(env, **params)` returning a float32 array with values in [0, 1], plus `size(width, height, **params)`.
 2. Call `register(Vision(name, label, description, view, size, [int_param(...)]))`.
+3. Optional, for Inspect: `explain=` (drawing primitives in board squares: shaded cells, lines, marks, boxes and one
+   sentence), and `names=` (one name per input) or `picture=` (how the inputs form pictures). See `EXPLAIN` in `vision.py`.
 
 **A new reward feature** (`rewards.py`):
 1. Add it to `FEATURES`, with `incompatible` if it conflicts with another feature.
@@ -297,18 +392,21 @@ dashboard (FastAPI) ──queue──> experiment.py ──> train_ga.py / train
 | `system.py` | detect CPU cores, RAM and battery; plan a run's resources |
 | `experiment.py` | run one recipe: start trainers, enforce time, honour stop requests, evaluate, record |
 | `lessons.py` | the run library: create, list, edit, move, delete, evaluate runs; regenerate `LESSON.md` and the index |
+| `course.py` | the course: `lessons/course.json` in order, queueing its recipes as seed groups, generating its `LESSON.md` blocks, checking what is missing |
 | `publisher.py` | trainers' live output: atomic writes, stats CSV, stop file |
 | `train_ga.py`, `train_dqn.py`, `policies.py`, `dqn_model.py` | the algorithms and their models |
 | `evaluate.py` | 100 fixed-seed games for any saved model: score, moves and how each game ended |
 | `glossary.py` | the Learn tab: an entry for every algorithm, setting, vision and reward feature (from the registries) plus general terms |
 | `ideas.py` | the ideas list: improvements that need new code, collected from every analysis, and the AI review of what to build next |
 | `analysis.py`, `llm.py` | AI analysis: build the run's context, ask the LLM, check its recommended recipes, launch one, write the lesson; a tiny OpenAI-compatible client that reads `.env` |
-| `dashboard/server.py`, `hub.py`, `jobs.py`, `store.py`, `replay.py` | API + SSE, run list and watchers, the run queue, live/saved weights, compact replay games |
-| `dashboard/static/` | plain HTML + canvas + Chart.js: `app.js` (tabs), `views/` (runs, new run, watch, compare), `components/` (board, line chart, playback, population) |
+| `dashboard/server.py`, `hub.py`, `jobs.py`, `store.py`, `replay.py`, `inspector.py` | API + SSE, run list and watchers, the run queue, live/saved weights, compact replay games, Inspect's move-by-move frames |
+| `dashboard/static/` | plain HTML + canvas + Chart.js: `app.js` (tabs), `views/` (runs, new run, watch, compare, best, ideas, learn), `components/` (board, inspector, line chart, endings chart, seed spread, glossary, playback, population) |
+| `tools/screenshots.py` | the README images, re-shot from the running dashboard |
+| `.github/workflows/ci.yml` | tests on Linux, Windows and macOS (Python 3.10 and 3.13) and in the Docker image |
 
 ## Roadmap
 
-Plans for what comes next (a "what the snake sees" overlay, a curated course, fairer GA vs DQN comparisons, playing it yourself, and more) are in [docs/ROADMAP.md](docs/ROADMAP.md).
+Plans for what comes next (fairer GA vs DQN comparisons at equal compute, playing it yourself, jev as a third player, a CNN for the picture visions, a read-only demo) are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## License
 

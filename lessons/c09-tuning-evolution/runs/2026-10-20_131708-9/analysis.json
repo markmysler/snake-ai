@@ -1,0 +1,199 @@
+{
+  "state": "done",
+  "model": "claude-haiku-5-5",
+  "created": "2026-10-20 17:32:23",
+  "seconds": 26.0,
+  "usage": {
+    "model": "claude-haiku-5-5",
+    "prompt_tokens": 16374,
+    "completion_tokens": 4866
+  },
+  "result": {
+    "headline": "The GA with mutation rate 0.05 scored 34.25 on its test seed, and its 3-seed group averaged 40.84 \u00b1 9.03, against about 45.6 for the two listed mutation-0.1 baseline seeds. The difference is inside the seed-to-seed spread, so this run does not show that less mutation helps.",
+    "summary": "**GA (mutation 0.05, seed 2):** On 100 fixed-seed test games the saved best network averaged 34.25 apples (median 38, best 48). Its games lasted 811 steps and took 24 steps per apple. All 100 games ended in a crash: 30 into a wall and 70 into its own body, with none starved. Over the 10-minute budget it completed 722 generations and about 218 million environment steps (about 363k steps per second). Its training mean over the last 100 games was 28.89. The 'kept networks' line (the GA's elites, the solid curve) rose from 0.58 at minute 0.5 to 20.93 at minute 1, then wandered between 23 and 26 from minute 2 to minute 8, and reached 28.89 at minute 10. The whole-generation mean (population_mean) levelled off around 19\u201323 after minute 2 and was still creeping up at the end (23.4). Both curves were still rising slowly when the run stopped.\n\n**Seed group and comparison:** The three seeds of this recipe scored 37.14, 51.14 and 34.25. The two baseline seeds (mutation 0.1) listed in this lesson scored 48.38 and 42.75, averaging about 45.6, so the drop to 40.8 is about 5 points, well inside one standard deviation of the seed spread (9.0). The 10-games-per-genome recipe averaged about 46.0. Mutation rate and games per genome both look like noise at this sample size, and neither clearly beats the other.",
+    "diagnosis": "A mutation rate of 0.05 changes half as many weights per child as 0.1. That gives smaller steps per generation, so gains should be slower but steadier, and the per-apple efficiency here (24 steps per apple versus 27\u201328 for the 0.1 baseline seeds) fits that picture. The population mean never caught up, though: it sat near 19\u201323 from minute 2 onward while the kept networks' score hovered around 25. A slower search with only 10 minutes of wall-clock time has less room to climb, which is consistent with the curve still rising at the end. Three seeds are too few to separate a real effect of about 5 points from a seed-to-seed spread of 9 points, so this is best read as 'no clear difference yet'. The run also has no prediction recorded, so there is nothing to check against.",
+    "learned": "A single GA run is a noisy measurement: one seed or three can differ by 10\u201320 points, so compare settings against the spread across seeds, not against one lucky number. Also, a slow curve that is still rising at the end often means the run was too short, not that the setting is wrong.",
+    "prediction_check": null
+  },
+  "recommendations": [
+    {
+      "title": "Train mutation 0.05 for 20 minutes",
+      "why": "The kept-network curve was still rising at the 10-minute mark (25.98 to 28.89 in the last minute), so this run may have been time-limited rather than setting-limited. Doubling the time tests whether the 0.05 setting keeps improving.",
+      "change": "Double the time budget to 20 minutes and keep every GA setting the same.",
+      "prediction": "The test mean rises above the 10-minute 34.25 towards 40\u201345, and the kept-network training mean ends above 35.",
+      "question": "Is mutation 0.05 limited by time, or has it reached its plateau?",
+      "new_lesson": false,
+      "lesson_slug": "c09-tuning-evolution",
+      "recipe": {
+        "time_budget_min": 20.0
+      },
+      "config": {
+        "lesson": "c09-tuning-evolution",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "short"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.05,
+              "mutation_sigma": 0.2
+            }
+          }
+        ],
+        "time_budget_min": 20.0,
+        "width": 10,
+        "height": 10,
+        "seed": 2
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "training time (min) 10 \u2192 20"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Try a lower mutation rate, 0.02",
+      "why": "Going from 0.1 to 0.05 moved the score by less than the seed noise. Testing a bigger step down shows whether gentler mutation starts to help or hurts once the change is large enough to matter.",
+      "change": "Set the GA mutation rate to 0.02 and keep all other settings the same, including the 10-minute budget.",
+      "prediction": "Test mean between 30 and 40, with more steps per apple (above 25) than the 0.05 run because exploration is slower.",
+      "question": "Does the mutation rate have a clear optimum, or does less mutation just slow learning down?",
+      "new_lesson": false,
+      "lesson_slug": "c09-tuning-evolution",
+      "recipe": {
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "mutation_rate": 0.02
+            }
+          }
+        ]
+      },
+      "config": {
+        "lesson": "c09-tuning-evolution",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "short"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.02,
+              "mutation_sigma": 0.2
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 2
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "ga mutation_rate 0.05 \u2192 0.02"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Use a population of 500",
+      "why": "Mutation changes so far have not moved the score much. A bigger population gives more variety per generation, which may matter more than the size of each mutation, and it is the next GA setting to test.",
+      "change": "Raise the GA population from 200 to 500 and keep mutation 0.05 and the 10-minute budget.",
+      "prediction": "Fewer generations (about 300 instead of 722) with a test mean in the same range as this run (30\u201340), possibly a little higher because the population mean is less noisy.",
+      "question": "Does more variety per generation beat more generations in the same time?",
+      "new_lesson": false,
+      "lesson_slug": "c09-tuning-evolution",
+      "recipe": {
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 500
+            }
+          }
+        ]
+      },
+      "config": {
+        "lesson": "c09-tuning-evolution",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "short"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 500,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.05,
+              "mutation_sigma": 0.2
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 2
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "ga population 200 \u2192 500"
+      ],
+      "launched": []
+    }
+  ],
+  "recommended": 0,
+  "ideas": [
+    {
+      "id": "idea-38",
+      "title": "Show seed-group differences with a noise band",
+      "kind": "dashboard",
+      "what": "In the seed-group view, show each recipe's mean test score as a bar with a \u00b11 standard deviation range across its seeds, and mark a difference as 'inside noise' when the bars overlap.",
+      "why": "Here the mutation 0.05 vs 0.1 difference (about 5 points) sits inside the seed spread (9 points), and a learner reading single numbers could draw the wrong conclusion. The current view does not make this obvious.",
+      "expected": "Learners stop reading differences smaller than the seed spread as real effects, and fewer conclusions flip when a run is repeated with a new seed.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 17:32:23",
+      "source": {
+        "run": "c09-tuning-evolution/2026-10-20_131708-9",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    }
+  ]
+}

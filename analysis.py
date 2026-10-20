@@ -41,8 +41,11 @@ at a time, and compare runs. You analyse one recorded run for a learner who is n
 
 Be concrete and honest:
 - Quote the numbers that support each claim (test score, training mean, steps, time).
-- The test score (100 fixed-seed games with the saved best model) is what counts; the training mean
-  of the last 100 games includes exploration (DQN) or the whole population's luck (GA).
+- The test score (100 fixed-seed games with the saved best model) is what counts. The training mean
+  of the last 100 games includes exploration moves (DQN). For the GA it follows the elites it keeps,
+  playing each new generation's fresh games; "population_mean" is the whole generation, mostly mutated
+  children. GA curves without "population_mean" (older runs) are the last children only, so they look
+  worse than the networks the GA kept.
 - One run is one seed: small differences between runs may be noise. Say so when it matters. If the run
   belongs to a seed group (the same recipe trained with several seeds), judge effects against the spread
   across those seeds, not against one seed.
@@ -159,7 +162,9 @@ def read_curve(run_dir, agent_id, points=CURVE_POINTS):
     return [{"minutes": round(float(rows[i]["elapsed_s"]) / 60, 2), "env_steps": int(rows[i]["total_steps"]),
              "games": int(rows[i]["total_games"]), rows[i]["iteration_label"]: int(rows[i]["iteration"]),
              "best_game": int(rows[i]["best_score"]), "mean_last_100": float(rows[i]["mean_score_100"]),
-             "steps_per_sec": float(rows[i]["steps_per_sec"])} for i in idx]
+             "steps_per_sec": float(rows[i]["steps_per_sec"]),
+             **({"population_mean": float(rows[i]["pop_mean_score"])} if rows[i].get("pop_mean_score") else {})}
+            for i in idx]
 
 
 def lesson_text(lesson, limit=3000):

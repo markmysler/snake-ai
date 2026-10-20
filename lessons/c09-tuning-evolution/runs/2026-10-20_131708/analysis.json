@@ -1,0 +1,143 @@
+{
+  "state": "done",
+  "model": "claude-haiku-5-5",
+  "created": "2026-10-20 17:33:24",
+  "seconds": 27.2,
+  "usage": {
+    "model": "claude-haiku-5-5",
+    "prompt_tokens": 16094,
+    "completion_tokens": 4883
+  },
+  "result": {
+    "headline": "The GA baseline (seed 0) reached a test mean of 49.61 in 10 minutes, but across its three seeds the mean is 46.91 \u00b1 3.66, and neither games per genome nor mutation rate moved the score beyond that seed-to-seed spread.",
+    "summary": "**GA baseline, seed 0:** the saved best network averaged 49.61 apples over 100 fixed-seed test games (median 53.5, best 88). Of the 100 games, 93 ended with the snake biting its own body and 7 by hitting a wall; none starved. It took 1,264 steps per game and 25 steps per apple, so it is efficient and not wandering. The training curve climbed from 0.09 at generation 1 to 49.01 at 10 minutes, with 228M env steps at about 390k steps per second. Its kept-network line (mean of the last 100 games) was flat near 30 from about minute 1.5 to 5.4, then rose steadily to 49 and was still climbing when the budget ran out. The population mean rose from 0.08 to 38.6 over the same period.\n\n**Across seeds (same recipe, seeds 0\u20132):** test means were 49.61, 48.38 and 42.75 (mean 46.91, std 3.66). The 10-games and mutation-0.05 groups were compared against this spread. 10 games per genome gave 53.43, 38.05 and 46.50 (mean 45.99, std about 7.7). Mutation rate 0.05 gave 37.14, 51.14 and 34.25 (mean 40.84, std about 9.0). Both groups overlap the baseline, so this lesson's question is not answered by these runs.",
+    "diagnosis": "The baseline's deaths are almost all body collisions, which is typical for a GA snake that grows long and traps itself, and the steps per apple (25) show it is not looping. Its curve is still rising, so at 10 minutes it is limited by time, not by having converged. Winning or dying faster is not what separates the seeds. Seed-to-seed variation in which network the GA happens to keep is larger than the effect of either setting here.\n\nGames per genome should reduce the lucky-network problem (the winner's curse), but each generation costs more games, so with a fixed 10-minute budget the GA gets fewer generations. The 10-games group had about the same env steps as the baseline (about 225M vs 228M), so the trade-off is visible in the spread, not in the averages. One 10-games seed produced 20 of 100 test games with a full board (won, max 97 apples), which shows the GA can find near-perfect play, but the other seeds did not. Mutation 0.05 made children change less, and the test scores fell in two of three seeds, but seed 1 was at baseline level. Because the GA ranks networks rather than using reward sizes, the reward scale does not matter here: this baseline's 49.61 is close to the earlier lesson 01 GA result of 51.55 with a different reward.",
+    "learned": "With one seed, a 3-point difference means nothing; judge a setting against the spread across seeds of the same recipe. A GA that is still climbing at the end of a time budget is short of time, not finished learning.",
+    "prediction_check": null
+  },
+  "recommendations": [
+    {
+      "title": "Give the GA baseline 30 minutes",
+      "why": "The kept-network curve was still rising steeply at 10 minutes (38.5 at 8.9 min, 49.0 at 10 min), so the baseline may be time-limited rather than near its ceiling.",
+      "change": "Raise the time budget from 10 to 30 minutes and keep every other setting the same.",
+      "prediction": "Test mean rises to about 55\u201365 and the kept-network curve keeps climbing past minute 15; if it levels off near 50, the GA ceiling with this vision is about 50.",
+      "question": "How much of the GA's score is limited by training time rather than by its settings?",
+      "new_lesson": false,
+      "lesson_slug": "c09-tuning-evolution",
+      "recipe": {
+        "time_budget_min": 30.0
+      },
+      "config": {
+        "lesson": "c09-tuning-evolution",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "short"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          }
+        ],
+        "time_budget_min": 30.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "training time (min) 10 \u2192 30"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Try a higher mutation rate, 0.2",
+      "why": "Lowering mutation to 0.05 changed nothing clearly, so the other direction, more exploration per generation, is the natural check on the same question.",
+      "change": "Set the GA mutation rate from 0.1 to 0.2.",
+      "prediction": "Test mean stays within the baseline spread (about 42\u201352); a clear drop below 40 would mean changes this large destroy good networks.",
+      "question": "Does more mutation per generation help or hurt once the population has found decent networks?",
+      "new_lesson": false,
+      "lesson_slug": "c09-tuning-evolution",
+      "recipe": {
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "mutation_rate": 0.2
+            }
+          }
+        ]
+      },
+      "config": {
+        "lesson": "c09-tuning-evolution",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "short"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.2,
+              "mutation_sigma": 0.2
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "ga mutation_rate 0.1 \u2192 0.2"
+      ],
+      "launched": []
+    }
+  ],
+  "recommended": 0,
+  "ideas": [
+    {
+      "id": "idea-39",
+      "title": "Confidence intervals on seed-group comparisons",
+      "kind": "evaluation",
+      "what": "Show, for each seed group, the mean test score with an interval based on the spread across seeds, and mark whether two groups overlap, so a learner sees at once that a difference is within noise.",
+      "why": "Three seeds per group gave standard deviations of 3.7 to 9 points, and the lesson's question could not be answered from the means alone.",
+      "expected": "Learners stop reading differences under about 5 points as results; comparisons of this size would be flagged as inconclusive instead of being ranked.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 17:33:24",
+      "source": {
+        "run": "c09-tuning-evolution/2026-10-20_131708",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    }
+  ]
+}

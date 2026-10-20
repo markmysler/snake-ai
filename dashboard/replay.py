@@ -30,5 +30,5 @@ def play_game(act, width=10, height=10, seed=None, vision="short"):
             eats.append([len(heads), cell(env.food) if env.food is not None else -1])
     end = ("crash" if info["collision"] else "stall" if info["truncated"]
            else "win" if info["won"] else "limit")
-    return {"w": width, "h": height, "init": init, "food": food, "heads": heads,
+    return {"w": width, "h": height, "init": init, "food": food, "heads": heads, "seed": seed,
             "eats": eats, "score": info["score"], "steps": env.steps, "end": end}

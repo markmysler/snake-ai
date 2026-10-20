@@ -34,7 +34,7 @@ def summary(info):
             "machine": {"cpus": machine.get("cpus", machine.get("cpu_count")), "on_battery": machine.get("on_battery")},
             "plan": info.get("plan"), "parallel": info.get("parallel", 1),
             "analysis": analysis.brief(info["path"]), "auto_analyze": bool(info.get("auto_analyze")),
-            "parent": info.get("parent"), "group": info.get("group")}
+            "parent": info.get("parent"), "group": info.get("group"), "course": info.get("course")}
 
 
 def sse(event, data):

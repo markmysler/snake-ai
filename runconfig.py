@@ -27,6 +27,9 @@ def slug(text):
 def normalize(cfg):
     """Fill defaults and canonicalize every part. Raises ValueError on unknown names."""
     c = {**DEFAULTS, **{k: v for k, v in cfg.items() if v is not None}}
+    own = [a for a in cfg.get("agents") or [] if isinstance(a, dict) and a.get("reward") is not None]
+    if "reward" in cfg and cfg["reward"] is None and own and len(own) == len(cfg["agents"]):
+        c["reward"] = "per-agent"  # a recorded per-agent recipe (reward: null) stays per agent
     c["lesson"] = slug(c["lesson"]) or "scratch"
     c["name"], c["note"] = str(c["name"]).strip()[:120], str(c["note"]).strip()[:2000]
     c["width"] = min(max(int(c["width"]), 6), 30)

@@ -1,0 +1,1 @@
+{"generation": 369, "fitness": 833.3333333333334, "hidden": 16, "mean_score": 80.66666666666667, "width": 10, "height": 10, "vision": {"type": "short"}, "reward": {"apple": 10.0, "death": 10.0, "win": 100.0}}

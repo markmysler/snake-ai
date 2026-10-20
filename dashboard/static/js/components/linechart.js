@@ -1,6 +1,7 @@
 // Line chart (Chart.js) used by Watch and Compare: switchable x-axis, crosshair, one tooltip that
 // lists every series at the pointer, and direct labels at line ends.
-// History rows: [elapsed_s, total_steps, total_games, best_score, mean_score_100, steps_per_sec, iteration]
+// History rows: [elapsed_s, total_steps, total_games, best_score, mean_score_100, steps_per_sec, iteration,
+//                end_wall, end_body, end_starved, end_won, pop_mean_score, pop_end_wall..pop_end_won] (see dashboard/store.py)
 import { cssVar, fmtCompact, fmtDuration, fmtNum } from "../util.js";
 
 export const X_MODES = {
@@ -8,6 +9,12 @@ export const X_MODES = {
   steps: { col: 1, title: "Env steps (experience)", fmt: fmtCompact },
   games: { col: 2, title: "Games played", fmt: fmtCompact },
 };
+export const POP_COL = 11;  // GA only: the whole generation's mean score (runs recorded after the curve fix)
+// A GA agent's curve follows the elites it keeps when the run recorded the population separately; older runs
+// recorded the last ~33 mutated children instead.
+export const hasPop = (rows) => (rows || []).some((r) => r[POP_COL] !== null && r[POP_COL] !== undefined);
+export const isOldGaCurve = (agent, rows) => agent.algorithm === "ga" && rows?.length > 0 && !hasPop(rows);
+
 export const METRICS = {
   mean: { col: 4, title: "Mean score, last 100 games", stepped: false },
   best: { col: 3, title: "Best score in a single game", stepped: true },
@@ -49,11 +56,11 @@ const crosshair = {
 const endLabels = {
   id: "endLabels",
   afterDatasetsDraw(chart) {
-    if (chart.data.datasets.length > 4) return; // past 4 series the legend does the labelling
+    if (chart.data.datasets.filter((ds) => ds.short).length > 4) return; // past 4 series the legend does the labelling
     const ctx = chart.ctx, labels = [];
     chart.data.datasets.forEach((ds, i) => {
       const pts = chart.getDatasetMeta(i).data, pt = pts[pts.length - 1];
-      if (pt) labels.push({ x: pt.x, y: pt.y, text: ds.short });
+      if (pt && ds.short) labels.push({ x: pt.x, y: pt.y, text: ds.short });
     });
     labels.sort((a, b) => a.y - b.y);
     for (let i = 1; i < labels.length; i++) labels[i].y = Math.max(labels[i].y, labels[i - 1].y + 13);
@@ -100,18 +107,23 @@ export class LineChart {
     });
   }
 
-  // series: [{label, short, color, dash, rows}]; yMax: shared scale for small multiples (optional)
+  // series: [{label, short, color, dash, pop, rows}]; pop: also draw the GA's whole generation (mean metric only)
+  // as a thin dotted companion line. yMax: shared scale for small multiples (optional)
   set(series, { x, metric, logX, yMax } = {}) {
     if (x) this.x = x;
     if (metric) this.metric = metric;
     if (logX !== undefined) this.logX = logX;
     const xc = X_MODES[this.x].col, yc = METRICS[this.metric].col;
-    this.chart.data.datasets = series.map((s) => ({
+    const line = (s, col, extra) => ({
       label: s.label, short: s.short, borderColor: s.color, backgroundColor: s.color,
       borderWidth: 2, borderDash: s.dash ? [6, 4] : [], pointRadius: 0, pointHoverRadius: 4,
       stepped: METRICS[this.metric].stepped ? "before" : false,
-      data: s.rows.filter((r) => r[xc] > 0).map((r) => ({ x: r[xc], y: r[yc] })),
-    }));
+      data: s.rows.filter((r) => r[xc] > 0 && r[col] !== null).map((r) => ({ x: r[xc], y: r[col] })), ...extra,
+    });
+    this.chart.data.datasets = series.flatMap((s) => [line(s, yc),
+      ...(s.pop && this.metric === "mean" && hasPop(s.rows)
+        ? [line(s, POP_COL, { label: `${s.label} · whole generation`, short: "", borderWidth: 1, borderDash: [2, 3], pointHoverRadius: 3 })]
+        : [])]);
     const xs = this.chart.options.scales.x, ys = this.chart.options.scales.y;
     Object.assign(xs, { type: this.logX ? "logarithmic" : "linear", min: this.logX ? undefined : 0 });
     xs.title.text = X_MODES[this.x].title + (this.logX ? " (log)" : "");

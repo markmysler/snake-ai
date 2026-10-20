@@ -4,6 +4,12 @@
 
 Fitness = a genome's average total reward per game under --reward (rewards.py). The default
 preset "ga_classic" (apples x 100 + moves x 0.1) is the fitness used in lessons 01-02.
+
+The learning curve (mean_score_100, end_*) follows the networks the GA keeps: the elites carried into
+each generation, playing that generation's fresh games. They were picked on the previous generation's
+games, so their new scores are an honest estimate of how good the kept networks are (scoring them on
+the games they were picked on would overstate them: the winner's curse). The whole generation, mostly
+mutated children, is recorded as pop_mean_score and pop_end_*.
 """
 import argparse
 import os
@@ -49,11 +55,23 @@ def game_seeds(base_seed, gen, idx, n):
     return [int(s) for s in np.random.SeedSequence([base_seed, gen, idx]).generate_state(n)]
 
 
+def elite_count(n, elite_frac):
+    return max(1, int(round(n * elite_frac)))
+
+
+def kept_results(results, gen, n_elite):
+    """The games the learning curve follows: the kept networks (the elites carried over from the last generation,
+    always first in the population) on this generation's fresh games. Generation 1 has kept nothing yet, so it
+    reports the starting population."""
+    return results[:n_elite] if gen > 1 else results
+
+
 def next_generation(pop, fit, rng, elite_frac, k, rate, sigma):
-    """Elites survive unchanged; the rest come from tournament + uniform crossover + mutation."""
+    """Elites survive unchanged (first in the new population); the rest come from tournament + uniform
+    crossover + mutation."""
     n, n_params = pop.shape
     order = np.argsort(-fit)
-    n_elite = max(1, int(round(n * elite_frac)))
+    n_elite = elite_count(n, elite_frac)
     n_child = n - n_elite
 
     def tournament():
@@ -122,9 +140,12 @@ def main():
             for sc, st, _, en in results:
                 total_steps += sum(st)
                 total_games += len(sc)
+                best_score = max(best_score, max(sc))
+            for sc, _, _, en in kept_results(results, gen, elite_count(len(pop), args.elite_frac)):
                 recent.extend(sc)
                 recent_ends.extend(en)
-                best_score = max(best_score, max(sc))
+            gen_scores = [s for sc, _, _, _ in results for s in sc]
+            gen_ends = [e for _, _, _, en in results for e in en]
             order = np.argsort(-fit)
 
             if fit[order[0]] > best_fit:
@@ -144,10 +165,11 @@ def main():
                     "mean_score": mean_scores, **grid})
 
             rec = pub.stats(gen, total_steps, total_games, best_score, np.mean(recent), ends=end_counts(recent_ends),
+                            pop_mean=np.mean(gen_scores), pop_ends=end_counts(gen_ends),
                             best_fitness=round(best_fit, 2), gen_best_fitness=round(float(fit[order[0]]), 2),
                             gen_mean_score=round(float(np.mean(mean_scores)), 3))
             print(f"[{args.agent}] gen {gen:4d} | fit best {fit[order[0]]:8.2f} all-time {best_fit:8.2f} | "
-                  f"best score {best_score:3d} | mean100 {rec['mean_score_100']:6.2f} | "
+                  f"best score {best_score:3d} | kept mean100 {rec['mean_score_100']:6.2f} | "
                   f"{rec['steps_per_sec']:9,.0f} steps/s | {rec['elapsed_s']:7.1f}s", flush=True)
 
             out_of_time = args.time_budget and pub.elapsed() >= args.time_budget * 60

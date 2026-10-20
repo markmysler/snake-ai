@@ -15,7 +15,11 @@ import time
 
 STATS_FIELDS = ["method", "iteration", "iteration_label", "total_steps", "total_games",
                 "elapsed_s", "best_score", "mean_score_100", "steps_per_sec",
-                "end_wall", "end_body", "end_starved", "end_won"]  # how the last 100 games ended (counts)
+                "end_wall", "end_body", "end_starved", "end_won",  # how the last 100 games ended (counts)
+                # GA only: this whole generation (mean score, and how its games ended, as counts). The main
+                # columns above follow the elites the GA keeps; these show all of its experiments.
+                "pop_mean_score", "pop_end_wall", "pop_end_body", "pop_end_starved", "pop_end_won"]
+ENDS = ("wall", "body", "starved", "won")
 STOP_FILE = "STOP"
 
 
@@ -82,8 +86,10 @@ class Publisher:
     def elapsed(self):
         return time.time() - self.start
 
-    def stats(self, iteration, total_steps, total_games, best_score, mean_score, ends=None, **extra):
-        """ends: {"wall": n, "body": n, "starved": n, "won": n} for the same last-100 games as mean_score."""
+    def stats(self, iteration, total_steps, total_games, best_score, mean_score, ends=None,
+              pop_mean=None, pop_ends=None, **extra):
+        """ends: {"wall": n, "body": n, "starved": n, "won": n} for the same last-100 games as mean_score.
+        pop_mean, pop_ends: GA only, the whole generation."""
         now = time.time()
         dt = max(now - self._last_t, 1e-9)
         sps = (total_steps - self._last_steps) / dt
@@ -93,7 +99,9 @@ class Publisher:
                "total_games": total_games, "elapsed_s": round(now - self.start, 2),
                "best_score": best_score, "mean_score_100": round(float(mean_score), 3),
                "steps_per_sec": round(sps, 1),
-               **{f"end_{k}": (ends or {}).get(k, "") for k in ("wall", "body", "starved", "won")}}
+               **{f"end_{k}": (ends or {}).get(k, "") for k in ENDS},
+               "pop_mean_score": "" if pop_mean is None else round(float(pop_mean), 3),
+               **{f"pop_end_{k}": (pop_ends or {}).get(k, "") for k in ENDS}}
         self._csv.writerow([rec[k] for k in STATS_FIELDS])
         self._csv_file.flush()
         write_json(self.path(f"{self.method}_stats.json"), {**rec, **extra, "run_id": self.run_id})

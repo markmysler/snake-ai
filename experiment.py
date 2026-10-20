@@ -38,6 +38,12 @@ def execute(run_dir, verbose=False):
     """Train a recorded (queued) run to the end. Returns the final run info."""
     info = lessons.read_run(run_dir)
     config, run_id = info["config"], info["id"]
+    os.makedirs(os.path.join(run_dir, "logs"), exist_ok=True)
+    try:  # the dashboard and `course.py run --wait` may both see a queued run: only one starts it
+        os.close(os.open(os.path.join(run_dir, "logs", "started"), os.O_CREAT | os.O_EXCL))
+    except FileExistsError:
+        print(f"[experiment] {run_id} was already started by another process", flush=True)
+        return info
     plan = system.plan(config, parallel=info.get("parallel", 1))
     live = lessons.live_dir(run_id)
     shutil.rmtree(live, ignore_errors=True)

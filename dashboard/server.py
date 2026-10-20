@@ -24,6 +24,7 @@ from fastapi.staticfiles import StaticFiles  # noqa: E402
 
 import algorithms  # noqa: E402
 import analysis  # noqa: E402
+import course  # noqa: E402
 import glossary  # noqa: E402
 import ideas  # noqa: E402
 import lessons  # noqa: E402
@@ -32,6 +33,7 @@ import rewards  # noqa: E402
 import runconfig  # noqa: E402
 import system  # noqa: E402
 import vision as visions  # noqa: E402
+from dashboard import inspector as inspect_mode  # noqa: E402
 from dashboard.hub import Hub, sse  # noqa: E402
 from dashboard.replay import play_game  # noqa: E402
 from dashboard.store import HISTORY_KEYS, read_history  # noqa: E402
@@ -41,6 +43,7 @@ STATIC = Path(__file__).resolve().parent / "static"
 
 def create_app(parallel=1):
     hub = Hub(concurrency=parallel)
+    games = inspect_mode.Inspector()
 
     @asynccontextmanager
     async def lifespan(app):
@@ -71,7 +74,7 @@ def create_app(parallel=1):
         return {"visions": [v.info() for v in visions.VISIONS.values()], "rewards": rewards.catalog(),
                 "algorithms": algorithms.catalog(), "defaults": runconfig.normalize({}),
                 "lessons": [{"name": n, "title": lessons.lesson_title(n)} for n in lessons.lessons()],
-                "llm": llm.status(), "glossary": glossary.entries()}
+                "llm": llm.status(), "glossary": glossary.entries(), "course": course.payload()}
 
     @app.get("/api/system")
     def system_info():
@@ -117,6 +120,16 @@ def create_app(parallel=1):
             raise HTTPException(400, str(e))
         hub.refresh_runs()
         return {"id": f"{config['lesson']}/{os.path.basename(run_dir)}", "queue": hub.queue_state()}
+
+    @app.post("/api/course/run")
+    def course_run(lesson: str):
+        """Queue a course lesson's recipes (those without runs yet) as seed groups."""
+        try:
+            dirs = course.queue(lesson, parallel=hub.jobs.concurrency)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        hub.refresh_runs()
+        return {"queued": len(dirs), "queue": hub.queue_state()}
 
     @app.get("/api/run")
     def run(id: str):
@@ -272,6 +285,21 @@ def create_app(parallel=1):
         g = play_game(act, meta.get("width", 10), meta.get("height", 10),
                       random.randrange(2**31), meta.get("vision", "short"))
         return {"game": g, "meta": meta}
+
+    @app.get("/api/frame")
+    def frame(run: str, agent: str, seed: int, step: int = 0, version: str | None = None):
+        """Inspect mode: one move of a replay game (fixed by its seed and model version), with the inputs the
+        network saw, its output for each move, and the vision's drawing of what it looks at."""
+        info = find(run)
+        algo = next((a["algorithm"] for a in info["config"]["agents"] if a["id"] == agent), None)
+        got = hub.watcher(run).policy(agent, version) if algo else None
+        if got is None:
+            raise HTTPException(404, f"no model for {agent} in {run}")
+        act, meta = got
+        if version and meta["version"] != version:
+            raise HTTPException(410, "That model version is no longer loaded. Inspect a newer game.")
+        g = games.game((run, agent, meta["version"], seed), act, meta, seed)
+        return {**g.frame(step), "info": inspect_mode.describe(meta, algo)}
 
     return app
 
