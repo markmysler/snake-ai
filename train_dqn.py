@@ -102,6 +102,7 @@ def parse_args():
     p.add_argument("--eps-decay-steps", type=int, default=100_000)
     p.add_argument("--eval-every", type=int, default=20_000, help="env steps between greedy evals")
     p.add_argument("--eval-games", type=int, default=20)
+    p.add_argument("--net", choices=("mlp", "conv"), default="mlp", help="conv: a small CNN reads the window / full pictures")
     p.add_argument("--publish-every", type=float, default=1.0, help="seconds between stats records")
     p.add_argument("--width", type=int, default=10)
     p.add_argument("--height", type=int, default=10)
@@ -124,7 +125,10 @@ def main():
             for i in range(n)]
     states = np.stack([e.reset() for e in envs])
     n_in = envs[0].state_size
-    online, target = QNet(n_in), QNet(n_in)
+    picture = visions.picture_info(vision, args.width, args.height) if args.net == "conv" else None
+    if args.net == "conv" and not picture:
+        raise SystemExit(f"--net conv needs a picture vision (window or full), not {visions.to_string(vision)}")
+    online, target = QNet(n_in, picture=picture), QNet(n_in, picture=picture)
     target.load_state_dict(online.state_dict())
     opt = torch.optim.Adam(online.parameters(), lr=args.lr)
     buf = ReplayBuffer(args.buffer, n_in)
@@ -138,7 +142,7 @@ def main():
     recent_ends = deque(maxlen=100)
     best_eval, next_eval, last_pub = -1.0, args.eval_every, time.time()
     print(f"[{method}] vision={visions.to_string(vision)} reward={reward_specs.to_string(reward)} inputs={n_in} envs={n} threads={args.threads} "
-          f"hidden={online.hidden}", flush=True)
+          f"hidden={online.hidden} net={args.net}", flush=True)
 
     try:
         while True:

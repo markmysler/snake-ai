@@ -19,13 +19,14 @@ sys.path.insert(0, str(ROOT))
 
 import uvicorn  # noqa: E402
 from fastapi import Body, FastAPI, HTTPException  # noqa: E402
-from fastapi.responses import FileResponse, StreamingResponse  # noqa: E402
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 
 import algorithms  # noqa: E402
 import analysis  # noqa: E402
 import course  # noqa: E402
 import glossary  # noqa: E402
+import jev  # noqa: E402
 import ideas  # noqa: E402
 import lessons  # noqa: E402
 import llm  # noqa: E402
@@ -36,13 +37,18 @@ import vision as visions  # noqa: E402
 from dashboard import inspector as inspect_mode  # noqa: E402
 from dashboard.hub import Hub, sse  # noqa: E402
 from dashboard.replay import play_game  # noqa: E402
+from policies import RecordedPolicy  # noqa: E402
 from dashboard.store import HISTORY_KEYS, read_history  # noqa: E402
 
 STATIC = Path(__file__).resolve().parent / "static"
 
 
-def create_app(parallel=1):
-    hub = Hub(concurrency=parallel)
+# What a read-only demo may still do: look things up (GET) and plan a recipe without launching it.
+READ_ONLY_ALLOWED = {("POST", "/api/plan")}
+
+
+def create_app(parallel=1, read_only=False):
+    hub = Hub(concurrency=0 if read_only else parallel)  # a demo never starts queued runs
     games = inspect_mode.Inspector()
 
     @asynccontextmanager
@@ -53,6 +59,14 @@ def create_app(parallel=1):
 
     app = FastAPI(lifespan=lifespan)
     app.state.hub = hub
+
+    if read_only:
+        @app.middleware("http")
+        async def refuse_changes(request, call_next):
+            if request.method not in ("GET", "HEAD") and (request.method, request.url.path) not in READ_ONLY_ALLOWED:
+                return JSONResponse({"detail": "This is a read-only demo: nothing can be launched, edited or deleted. "
+                                     "Install the lab to train your own snakes."}, status_code=403)
+            return await call_next(request)
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
     def find(run_id):
@@ -74,7 +88,8 @@ def create_app(parallel=1):
         return {"visions": [v.info() for v in visions.VISIONS.values()], "rewards": rewards.catalog(),
                 "algorithms": algorithms.catalog(), "defaults": runconfig.normalize({}),
                 "lessons": [{"name": n, "title": lessons.lesson_title(n)} for n in lessons.lessons()],
-                "llm": llm.status(), "glossary": glossary.entries(), "course": course.payload()}
+                "llm": {**llm.status(), "configured": llm.status()["configured"] and not read_only},
+                "glossary": glossary.entries(), "course": course.payload(), "read_only": read_only}
 
     @app.get("/api/system")
     def system_info():
@@ -90,8 +105,10 @@ def create_app(parallel=1):
             return {"errors": [str(e)], "warnings": []}
         errors, warnings = runconfig.validate(config)
         p = system.plan(config, hub.system, parallel=int(body.get("parallel") or hub.jobs.concurrency))
+        costs = {a["id"]: {**jev.estimate(a["params"]["games"], a["params"]["batch"]), "cap": a["params"]["max_cost"]}
+                 for a in config["agents"] if a["algorithm"] == "jev"}  # paid API calls: shown before starting
         return {"config": config, "describe": runconfig.describe(config), "errors": errors,
-                "warnings": warnings + p["warnings"], "plan": p}
+                "warnings": warnings + p["warnings"], "plan": p, "costs": costs}
 
     # ---- runs -----------------------------------------------------------------------
     @app.get("/api/runs")
@@ -184,7 +201,7 @@ def create_app(parallel=1):
         """Analyse a finished run in a separate process; progress shows up in the run list."""
         info = find(id)
         if not llm.status()["configured"]:
-            raise HTTPException(400, "No LLM configured: add TOKENROUTER_BASE_URL and TOKENROUTER_API_KEY to .env")
+            raise HTTPException(400, f"No LLM configured: {llm.SETUP_HINT}")
         if info["status"] in lessons.ACTIVE:
             raise HTTPException(400, "The run is still training; analyse it once it has finished.")
         current = analysis.read(info["path"])
@@ -229,7 +246,7 @@ def create_app(parallel=1):
     def review_ideas():
         """Ask the LLM which ideas to build, in a separate process; poll GET /api/ideas for the result."""
         if not llm.status()["configured"]:
-            raise HTTPException(400, "No LLM configured: add TOKENROUTER_BASE_URL and TOKENROUTER_API_KEY to .env")
+            raise HTTPException(400, f"No LLM configured: {llm.SETUP_HINT}")
         if not ideas.open_ideas():
             raise HTTPException(400, "There are no open ideas to review.")
         current = ideas.read_review()
@@ -282,8 +299,11 @@ def create_app(parallel=1):
         if got is None:
             return {"waiting": True}
         act, meta = got
-        g = play_game(act, meta.get("width", 10), meta.get("height", 10),
-                      random.randrange(2**31), meta.get("vision", "short"))
+        seed = random.randrange(2**31)
+        if isinstance(getattr(act, "__self__", None), RecordedPolicy):  # jev: replay one of the games it played
+            seed = random.choice(act.__self__.seeds())
+            act = act.__self__.for_seed(seed).act
+        g = play_game(act, meta.get("width", 10), meta.get("height", 10), seed, meta.get("vision", "short"))
         return {"game": g, "meta": meta}
 
     @app.get("/api/frame")
@@ -298,6 +318,10 @@ def create_app(parallel=1):
         act, meta = got
         if version and meta["version"] != version:
             raise HTTPException(410, "That model version is no longer loaded. Inspect a newer game.")
+        if isinstance(getattr(act, "__self__", None), RecordedPolicy):
+            if seed not in act.__self__.games:
+                raise HTTPException(404, "jev only played its test games; inspect one of those")
+            act = act.__self__.for_seed(seed).act
         g = games.game((run, agent, meta["version"], seed), act, meta, seed)
         return {**g.frame(step), "info": inspect_mode.describe(meta, algo)}
 
@@ -309,6 +333,8 @@ def parse_args(argv=None):
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8000)
     p.add_argument("--parallel", type=int, default=1, help="runs that may train at the same time")
+    p.add_argument("--read-only", action="store_true", help="a shareable demo: browse, watch, inspect and compare, "
+                   "but nothing can be launched, edited, deleted or analysed")
     return p.parse_args(argv)
 
 
@@ -316,8 +342,8 @@ def main():
     cfg = parse_args()
     import torch  # keep replay inference light: one thread
     torch.set_num_threads(1)
-    print(f"[dashboard] http://{cfg.host}:{cfg.port}", flush=True)
-    uvicorn.run(create_app(cfg.parallel), host=cfg.host, port=cfg.port, log_level="warning",
+    print(f"[dashboard] http://{cfg.host}:{cfg.port}" + (" (read-only demo)" if cfg.read_only else ""), flush=True)
+    uvicorn.run(create_app(cfg.parallel, read_only=cfg.read_only), host=cfg.host, port=cfg.port, log_level="warning",
                 timeout_graceful_shutdown=2)
 
 

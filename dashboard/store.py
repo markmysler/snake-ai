@@ -23,7 +23,7 @@ HISTORY_KEYS = ["elapsed_s", "total_steps", "total_games", "best_score",
 KEEP_VERSIONS = 64  # old versions stay loaded so frozen boards can keep playing them
 KEEP_POPULATIONS = 4
 META_KEYS = ("version", "iteration", "iteration_label", "vision", "width", "height",
-             "fitness", "eval_mean", "rank", "agent")
+             "fitness", "eval_mean", "rank", "agent", "recorded", "prompt", "cost_usd")
 
 
 def slim(meta):

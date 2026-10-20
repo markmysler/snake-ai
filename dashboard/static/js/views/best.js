@@ -40,11 +40,11 @@ export function mount(main, param, app) {
     for (const e of all) best[e.agent.algorithm] ||= e;
     return h("div", { class: "kpis" }, Object.values(best).map((e) => h("div", { class: "stat" },
       h("div", { class: "label" }, `Best ${algoOf(e.agent.algorithm)?.label || e.agent.algorithm}`, info(e.agent.algorithm)),
-      h("div", { class: "hero" }, fmtNum(e.ev.mean, 1), h("small", {}, "apples · test (100 games)")),
+      h("div", { class: "hero" }, fmtNum(e.ev.mean, 1), h("small", {}, `apples · test (${e.ev.games ?? 100} games)`)),
       h("div", { class: "sub" }, h("span", {}, h("b", {}, runTitle(e.run))), h("span", {}, `vision ${e.run.vision.spec}`),
         h("span", {}, `median ${fmtNum(e.ev.median, 1)} · max ${e.ev.max}`)),
       h("div", { class: "btn-row" }, h("button", { class: "small", onclick: () => app.go(`#watch/${e.run.id}`) }, "Watch"),
-        h("button", { class: "small", onclick: () => app.go(`#new/${e.run.id}`), title: "Open this recipe in New run" }, "Run again")))));
+        h("button", { "data-write": true, class: "small", onclick: () => app.go(`#new/${e.run.id}`), title: "Open this recipe in New run" }, "Run again")))));
   }
 
   function recipe(e) {
@@ -92,7 +92,7 @@ export function mount(main, param, app) {
             h("button", { "aria-expanded": String(open), onclick: () => { open ? view.open.delete(key) : view.open.add(key); render(); } },
               open ? "Hide recipe" : "Recipe"),
             h("button", { onclick: () => app.go(`#watch/${e.run.id}`) }, "Watch"),
-            h("button", { onclick: () => app.go(`#new/${e.run.id}`), title: "Open this recipe in New run" }, "Run again"))));
+            h("button", { "data-write": true, onclick: () => app.go(`#new/${e.run.id}`), title: "Open this recipe in New run" }, "Run again"))));
         return open ? [tr, h("tr", { class: "detail" }, h("td", { colspan: 10 }, recipe(e)))] : [tr];
       }))));
   }
@@ -102,7 +102,7 @@ export function mount(main, param, app) {
     if (!all.length) {
       root.replaceChildren(h("div", { class: "card empty" }, h("strong", {}, "No tested models yet"),
         "Finished runs are tested on 100 fixed games; the best ones appear here.",
-        h("button", { class: "primary", onclick: () => app.go("#new") }, "New run")));
+        h("button", { "data-write": true, class: "primary", onclick: () => app.go("#new") }, "New run")));
       return;
     }
     const max = all[0].ev.mean;

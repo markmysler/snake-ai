@@ -1,7 +1,7 @@
 // New run: build a recipe (lesson, algorithms, vision, reward, time) and start it.
 // Every option comes from the server's catalog, so new visions / rewards / algorithms show up here.
 import { info } from "../components/glossary.js";
-import { api, fmtMB, h, toast } from "../util.js";
+import { api, confirmDialog, fmtMB, h, toast } from "../util.js";
 
 const clone = (o) => JSON.parse(JSON.stringify(o));
 
@@ -39,6 +39,12 @@ export function mount(main, fromId, app) {
     h("div", {}, h("h2", {}, title), help ? h("p", {}, help) : null));
   const changed = () => { clearTimeout(timer); timer = setTimeout(replan, 250); };
   function numberField(p, value, onValue, gid) {
+    if (p.type === "choice") {  // named options (e.g. DQN's network): a select instead of a number
+      return h("label", { class: "field", title: p.help || "" }, h("span", {}, p.label, gid ? info(gid, p.label) : null),
+        h("select", { onchange: (e) => { onValue(e.target.value); changed(); } },
+          Object.entries(p.options).map(([v, label]) => h("option", { value: v, selected: v === value }, label))),
+        p.help ? h("small", {}, p.help) : null);
+    }
     return h("label", { class: "field", title: p.help || "" }, h("span", {}, p.label, gid ? info(gid, p.label) : null),
       h("input", { type: "number", min: p.min, max: p.max, step: p.type === "int" ? 1 : "any", value,
         oninput: (e) => { if (e.target.value !== "") { onValue(+e.target.value); changed(); } } }),
@@ -177,6 +183,7 @@ export function mount(main, fromId, app) {
     const errors = plan?.errors || [], warnings = plan?.warnings || [];
     const ahead = app.runs.filter((r) => r.status === "queued").length
       + Math.max(0, app.runs.filter((r) => r.status === "running").length - app.queue.concurrency + 1);
+    const costs = Object.entries(plan?.costs || {});
     const start = h("button", { class: "primary", disabled: !p || errors.length > 0, onclick: launch },
       (ahead > 0 ? `Add to queue (${ahead} ahead)` : "Start training") + (seeds > 1 ? ` · ${seeds} seeds` : ""));
     summary.replaceChildren(
@@ -194,9 +201,12 @@ export function mount(main, fromId, app) {
           + (app.queue.concurrency >= seeds ? "They train side by side, sharing this machine."
             : `With ${app.queue.concurrency} run(s) at a time that takes about ${Math.ceil(seeds / Math.max(1, app.queue.concurrency))
               * plan.config.time_budget_min} min; allow more at once in Runs to finish sooner.`)) : null,
+        costs.length ? h("div", { class: "msg warn" }, h("b", {}, "Paid: "), costs.map(([id, c]) =>
+          `${id} (jev on TokenRouter) should cost about $${(c.usd * seeds).toFixed(2)} and take ${Math.ceil(c.minutes)} min or more (its API is in alpha and sometimes much slower) `
+          + `(${c.decisions.toLocaleString()} moves${seeds > 1 ? ` over ${seeds} seeds` : ""}; it stops at $${c.cap} per run).`).join(" ")) : null,
         errors.length || warnings.length ? h("div", { class: "msgs" },
           errors.map((e) => h("div", { class: "msg error" }, e)), warnings.map((w) => h("div", { class: "msg warn" }, w))) : null,
-        cat.llm?.configured ? h("label", { class: "check-line", title: `Uses ${cat.llm.model}` },
+        cat.llm?.configured ? h("label", { class: "check-line", title: `Uses ${cat.llm.model} via ${cat.llm.provider}` },
           h("input", { type: "checkbox", checked: autoAnalyze, onchange: (e) => { autoAnalyze = e.target.checked; } }),
           "Analyze with AI when it ends") : null,
         h("div", { class: "btn-row" }, start, h("button", { class: "ghost", onclick: () => app.go("#runs") }, "Cancel"))),
@@ -204,7 +214,7 @@ export function mount(main, fromId, app) {
         meter("CPU cores", p.cores_used, p.cores_per_run, (v) => v),
         meter("Memory", p.mem_mb, p.ram_budget_mb, fmtMB),
         h("div", { class: "msgs small ink2" }, Object.entries(p.agents).map(([id, a]) =>
-          h("div", {}, h("b", {}, id), ` · ${a.cores} ${a.flag === "workers" ? "worker processes" : "torch thread(s)"} · ~${fmtMB(a.mem_mb)}`
+          h("div", {}, h("b", {}, id), ` · ${a.cores} ${a.flag === "workers" ? "worker processes" : a.algorithm === "jev" ? "request at a time" : "torch thread(s)"} · ~${fmtMB(a.mem_mb)}`
             + (a.params.buffer ? ` · buffer ${a.params.buffer.toLocaleString()}` : "")))),
         h("p", { class: "small muted" }, `Up to ${p.max_parallel} runs like this fit on this machine at once `
           + `(currently ${app.queue.concurrency} at a time, change it in Runs).`)) : null);
@@ -223,6 +233,12 @@ export function mount(main, fromId, app) {
   }
 
   async function launch() {
+    const costs = Object.values(plan?.costs || {});
+    if (costs.length) {
+      const usd = costs.reduce((s, c) => s + c.usd, 0) * seeds, cap = costs.reduce((s, c) => s + c.cap, 0) * seeds;
+      if (!(await confirmDialog("Start a paid run?", `jev's moves are paid API calls on TokenRouter: this run should cost `
+        + `about $${usd.toFixed(2)}, and at most $${cap.toFixed(2)} (the spending cap).`, "Start"))) return;
+    }
     try {
       const res = await api.post("/api/runs", { config: cfg, auto_analyze: autoAnalyze, origin: draft?.origin, seeds });
       toast(res.queue.running.length >= res.queue.concurrency && !res.queue.running.includes(res.id)

@@ -151,12 +151,16 @@ def pid_alive(pid):
 MIN_DQN_BUFFER = 10_000
 
 
+CONV_THREADS = 4
+
+
 def plan(config, info=None, parallel=1):
     """How a run would use this machine. config = a normalized run config (see runconfig.py).
     `parallel` = how many runs share the machine at once (each gets 1/parallel of it).
 
     Default split (the same as lessons 01-02): when DQNs run alongside, GA pools get half the
-    cores; each DQN gets one thread; the rest is left for the dashboard and the OS."""
+    cores; each DQN gets one thread (a DQN with a CNN up to CONV_THREADS of what is left); the rest is
+    left for the dashboard and the OS."""
     info = info or detect()
     cpus, parallel = info["cpus"], max(1, int(parallel))
     share = max(1, cpus // parallel)
@@ -173,6 +177,8 @@ def plan(config, info=None, parallel=1):
         algo, params = ALGORITHMS[a["algorithm"]], dict(a["params"])
         if algo.resource["role"] == "pool":
             cores = a.get("cores") or max(1, pool_cores // len(pools))
+        elif params.get("net") == "conv":  # convolutions are worth several threads; MLPs this small are not
+            cores = a.get("cores") or max(1, min(CONV_THREADS, (share - (pool_cores if pools else 0) - 1) // len(threaded)))
         else:
             cores = a.get("cores") or 1
         out[a["id"]] = {"algorithm": algo.name, "cores": cores, "flag": algo.resource["flag"],

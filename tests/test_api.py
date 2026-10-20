@@ -26,7 +26,7 @@ def client(tmp_path, monkeypatch):
 def test_catalog_and_system(client):
     cat = client.get("/api/catalog").json()
     assert {v["name"] for v in cat["visions"]} >= {"short", "full", "rays", "window"}
-    assert {a["name"] for a in cat["algorithms"]} == {"ga", "dqn"}
+    assert {a["name"] for a in cat["algorithms"]} == {"ga", "dqn", "jev"}
     feats = {f["name"]: f for f in cat["rewards"]["features"]}
     assert "potential" in feats["distance"]["incompatible"]
     assert client.get("/api/system").json()["cpus"] >= 1
@@ -85,3 +85,28 @@ def test_run_again_keeps_a_per_agent_reward(client):
     new = client.post("/api/runs", json={"config": {**base["config"], "vision": "room"}}).json()
     again = client.get(f"/api/run?id={new['id']}").json()["config"]
     assert again["reward"] is None and [a["reward"] for a in again["agents"]] == [a["reward"] for a in base["config"]["agents"]]
+
+
+def test_read_only_demo_refuses_every_change(tmp_path, monkeypatch):
+    shutil.copytree(os.path.join(REAL, "01-short-vision"), tmp_path / "01-short-vision")
+    monkeypatch.setattr(lessons, "LESSONS_DIR", str(tmp_path))
+    import ideas
+    monkeypatch.setattr(ideas, "IDEAS_DIR", str(tmp_path / "ideas"))
+    from dashboard.server import create_app
+    app = create_app(parallel=2, read_only=True)
+    c = TestClient(app)
+    rid = c.get("/api/runs").json()["runs"][0]["id"]
+    assert c.get("/api/catalog").json()["read_only"] is True
+    assert app.state.hub.jobs.concurrency == 0
+    changes = [("post", "/api/runs", {"config": {}}), ("patch", f"/api/run?id={rid}", {"name": "x"}),
+               ("delete", f"/api/run?id={rid}", None), ("post", f"/api/run/stop?id={rid}", None),
+               ("post", "/api/queue", {"concurrency": 2}), ("post", f"/api/analysis?id={rid}", None),
+               ("post", f"/api/analysis/launch?id={rid}&index=0", None), ("patch", "/api/idea?id=I1", {"status": "done"}),
+               ("post", "/api/ideas/review", None), ("post", "/api/course/run?lesson=c01-two-ways-to-learn", None)]
+    for method, url, body in changes:
+        res = getattr(c, method)(url, **({"json": body} if body is not None else {}))
+        assert res.status_code == 403, (method, url, res.status_code)
+    assert c.get(f"/api/run?id={rid}").status_code == 200  # still there
+    assert c.post("/api/plan", json={"config": {}}).status_code == 200  # planning a recipe is harmless
+    g = c.get(f"/api/game?run={rid}&agent=ga").json()["game"]
+    assert c.get(f"/api/frame?run={rid}&agent=ga&seed={g['seed']}&step=3").status_code == 200  # inspect works

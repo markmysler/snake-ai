@@ -1,11 +1,15 @@
-"""A tiny client for an OpenAI-compatible chat API (TokenRouter by default). Standard library only.
+"""A tiny client for an OpenAI-compatible chat API: TokenRouter or OpenRouter. Standard library only.
 
-Settings come from the environment or a `.env` file in this folder or the folder above it:
+Settings come from the environment or a `.env` file in this folder or the folder above it. Set the key of
+either provider (or both):
 
-    TOKENROUTER_BASE_URL=https://api.tokenrouter.com/v1
-    TOKENROUTER_API_KEY=...
-    SNAKE_AI_LLM_MODEL=anthropic/claude-haiku-5.5    # optional
+    TOKENROUTER_API_KEY=...            # https://tokenrouter.com
+    OPENROUTER_API_KEY=...             # https://openrouter.ai
+    SNAKE_AI_LLM_PROVIDER=openrouter   # optional: which one to use when both have a key (default tokenrouter)
+    SNAKE_AI_LLM_MODEL=anthropic/claude-haiku-5.5    # optional; both providers use this model id
+    TOKENROUTER_BASE_URL / OPENROUTER_BASE_URL       # optional: another endpoint of that provider
 
+Any other OpenAI-compatible API works as the "tokenrouter" provider with its base URL and key.
 `.env` is git-ignored: keys never end up in the repository.
 """
 import json
@@ -16,6 +20,14 @@ import urllib.request
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_MODEL = "anthropic/claude-haiku-5.5"
+PROVIDERS = {
+    "tokenrouter": {"label": "TokenRouter", "base_url": "https://api.tokenrouter.com/v1",
+                    "key": "TOKENROUTER_API_KEY", "url": "TOKENROUTER_BASE_URL", "headers": {}},
+    "openrouter": {"label": "OpenRouter", "base_url": "https://openrouter.ai/api/v1",
+                   "key": "OPENROUTER_API_KEY", "url": "OPENROUTER_BASE_URL",
+                   "headers": {"X-Title": "Snake AI lab"}},  # (OpenRouter's optional app attribution)
+}
+SETUP_HINT = "add TOKENROUTER_API_KEY or OPENROUTER_API_KEY to .env (see .env.example)"
 
 
 class LLMError(RuntimeError):
@@ -38,24 +50,41 @@ def load_env():
             os.environ.setdefault(key.strip(), value.strip().strip("'\""))
 
 
-def settings():
+def provider_name():
+    """SNAKE_AI_LLM_PROVIDER if set, else the first provider with a key (TokenRouter, then OpenRouter)."""
     load_env()
-    return {"base_url": os.environ.get("TOKENROUTER_BASE_URL", "").rstrip("/"),
-            "api_key": os.environ.get("TOKENROUTER_API_KEY", ""),
+    chosen = os.environ.get("SNAKE_AI_LLM_PROVIDER", "").strip().lower()
+    if chosen:
+        if chosen not in PROVIDERS:
+            raise LLMError(f"SNAKE_AI_LLM_PROVIDER must be one of {', '.join(PROVIDERS)}, not {chosen!r}")
+        return chosen
+    return next((n for n, p in PROVIDERS.items() if os.environ.get(p["key"])), "tokenrouter")
+
+
+def settings():
+    name = provider_name()
+    p = PROVIDERS[name]
+    return {"provider": name, "label": p["label"],
+            "base_url": (os.environ.get(p["url"]) or p["base_url"]).rstrip("/"),
+            "api_key": os.environ.get(p["key"], ""), "headers": p["headers"],
             "model": os.environ.get("SNAKE_AI_LLM_MODEL") or DEFAULT_MODEL}
 
 
 def status():
-    """What the dashboard may show: whether it is set up and which model it uses (never the key)."""
-    s = settings()
-    return {"configured": bool(s["base_url"] and s["api_key"]), "model": s["model"]}
+    """What the dashboard may show: whether it is set up, the provider and the model (never the key)."""
+    try:
+        s = settings()
+    except LLMError as e:
+        return {"configured": False, "model": DEFAULT_MODEL, "provider": None, "error": str(e), "hint": SETUP_HINT}
+    return {"configured": bool(s["base_url"] and s["api_key"]), "model": s["model"], "provider": s["label"],
+            "hint": SETUP_HINT}
 
 
 def chat(messages, max_tokens=4000, temperature=None, json_mode=True, timeout=180, retries=2):
     """Send a chat; returns (text, usage). Raises LLMError with a readable message."""
     s = settings()
     if not (s["base_url"] and s["api_key"]):
-        raise LLMError("No LLM configured: set TOKENROUTER_BASE_URL and TOKENROUTER_API_KEY in .env")
+        raise LLMError(f"No LLM configured: {SETUP_HINT}")
     body = {"model": s["model"], "messages": messages, "max_tokens": max_tokens}
     if temperature is not None:  # some models (e.g. Claude Opus 5.5) refuse it
         body["temperature"] = temperature
@@ -63,7 +92,7 @@ def chat(messages, max_tokens=4000, temperature=None, json_mode=True, timeout=18
         body["response_format"] = {"type": "json_object"}
     req = urllib.request.Request(s["base_url"] + "/chat/completions", data=json.dumps(body).encode(),
                                  headers={"Authorization": f"Bearer {s['api_key']}",
-                                          "Content-Type": "application/json"})
+                                          "Content-Type": "application/json", **s["headers"]})
     for attempt in range(retries + 1):
         try:
             with urllib.request.urlopen(req, timeout=timeout) as res:
@@ -74,12 +103,12 @@ def chat(messages, max_tokens=4000, temperature=None, json_mode=True, timeout=18
             if e.code in (429, 500, 502, 503, 504) and attempt < retries:
                 time.sleep(3 * (attempt + 1))
                 continue
-            raise LLMError(f"LLM request failed ({e.code}): {detail}") from None
+            raise LLMError(f"{s['label']} request failed ({e.code}): {detail}") from None
         except (urllib.error.URLError, TimeoutError, OSError) as e:
             if attempt < retries:
                 time.sleep(3 * (attempt + 1))
                 continue
-            raise LLMError(f"Could not reach the LLM: {e}") from None
+            raise LLMError(f"Could not reach {s['label']}: {e}") from None
     try:
         choice = data["choices"][0]
         text = choice["message"]["content"]
@@ -113,6 +142,6 @@ def chat_json(messages, **kw):
 
 if __name__ == "__main__":
     st = status()
-    print(f"configured: {st['configured']}  model: {st['model']}")
+    print(f"configured: {st['configured']}  provider: {st['provider']}  model: {st['model']}")
     if st["configured"]:
         print(chat_json([{"role": "user", "content": 'Reply with {"ok": true}'}], max_tokens=50))

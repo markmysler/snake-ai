@@ -373,7 +373,11 @@ def evaluate_run(run_dir, agents, games=100):
     for a in agents:
         path = model_path(run_dir, a)
         if os.path.exists(path):
-            ev = evaluate(path, games)
+            try:
+                ev = evaluate(path, games)
+            except ValueError as e:  # e.g. a jev run that finished no game
+                print(f"[lessons] {a['id']}: not evaluated ({e})", flush=True)
+                continue
             out[a["id"]] = {k: ev[k] for k in EVAL_KEYS}
     return out
 

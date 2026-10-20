@@ -96,44 +96,17 @@ reported fact into felt experience.
 
 ---
 
-## Nice to have after publishing
+## Built after the course (October 2026)
 
-### jev as a third player · M–L
-
-**What.** An `algorithm` entry `jev` that plays through TokenRouter's decisions API (`typesafe/jev-1.13`):
-- the request carries the `state` (from the vision's `explain`, see Inspect mode) and one `choice` question whose criteria are
-  the three moves;
-- its "training" is editing the instructions and criteria;
-- it is evaluated on the same fixed test games.
-
-**Cost and speed.** About $0.000016 and about 1 s per decision. A 100-game evaluation is about 30,000 decisions (about
-$0.50). Done one at a time that would take more than 8 hours, so batch boards: `questions` is a map, so many boards fit
-in one call (the size limit needs measuring).
-
-**Design.**
-- `train_jev.py` with a game budget instead of a time budget.
-- A cost estimate and confirmation in New run.
-- Evaluation on 20 games, flagged as fewer than the usual 100.
-
-**Decide.** Spending caps, and whether to evaluate on fewer games.
-
-### Convolutional network for full-board vision (idea 14) · M
-
-**What.** DQN with a small CNN over the picture-based visions (window, full) instead of an MLP over flattened pixels.
-
-**Design.**
-- Visions declare a `shape` (channels, side).
-- `dqn_model.QNet` gets a conv branch, chosen with `--net conv` (a new DQN setting, default `mlp`).
-- The GA stays on MLPs: a CNN has too many weights for evolution at this scale.
-
-**Check.** A lesson comparing full + MLP with full + CNN at equal steps (needs equal-compute comparisons).
-
-### Read-only demo mode · S–M
-
-**What.** `python -m dashboard.server --read-only`: the server refuses launch, delete, edit and analysis; the browser
-hides those buttons. It allows a public demo of the curated course, for example a Docker image on a small server or a
-Hugging Face Space.
-
-A fully static site (no Python) would need the policies ported to the browser (ONNX or JS), which is out of scope.
-
-**Checks.** Every changing endpoint returns 403 in read-only mode, and a UI test finds no launch, delete or edit buttons.
+- **OpenRouter** as well as TokenRouter for the AI analysis (`llm.py`): set either key; `SNAKE_AI_LLM_PROVIDER` picks one
+  when both are set. jev stays on TokenRouter (OpenRouter's `typesafe/jev-router` is a chat router, not the decisions model).
+- **jev as a third player** (`jev.py`, `train_jev.py`): the run plays the fixed test games, many boards per request;
+  instructions are the setting to tune; cost estimate and confirmation in New run; a spending cap; recorded games are
+  replayed and inspected without new calls. Decided: it plays the first 20 of the 100 test games by default (flagged
+  wherever its score appears), and descriptions are said relative to the heading (the same information as the
+  vision's inputs, but readable), because with screen-relative apple directions it wandered without eating.
+- **A CNN for the picture visions**: DQN's *Network* setting (`mlp` or `conv`), validated against the vision. Notebook
+  lesson 10 compares the two on the whole board.
+- **Read-only demo mode**: `--read-only` refuses every change (403) and the dashboard hides those buttons.
+- Responsiveness pass: every view checked from 320 to 1920 px wide, light and dark, with no sideways scrolling; the run
+  tables become cards on phones.

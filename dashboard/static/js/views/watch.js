@@ -21,7 +21,7 @@ export function mount(main, runId, app) {
     if (pick) { app.go(`#watch/${pick.id}`); return { ownsConnection: true }; }
     main.append(h("div", { class: "card empty" }, h("strong", {}, "Nothing to watch yet"),
       "Start a run and its snakes will appear here while they learn.",
-      h("button", { class: "primary", onclick: () => app.go("#new") }, "New run")));
+      h("button", { "data-write": true, class: "primary", onclick: () => app.go("#new") }, "New run")));
     return {};
   }
   const root = h("div", { class: "view" });
@@ -49,9 +49,9 @@ export function mount(main, runId, app) {
         h("div", {}, h("div", { class: "btn-row" }, h("h1", {}, runTitle(run)), statusPill(run.status)),
           h("p", { class: "lead" }, `${run.lesson_title} · ${run.id}`)),
         h("div", { class: "btn-row" }, picker(),
-          run.status === "running" ? h("button", { onclick: () => api.post(`/api/run/stop?id=${q(run.id)}`)
+          run.status === "running" ? h("button", { "data-write": true, onclick: () => api.post(`/api/run/stop?id=${q(run.id)}`)
             .then(() => toast("Stopping… the run will be evaluated and saved.")) }, "Stop & save") : null,
-          h("button", { onclick: () => app.go(`#new/${run.id}`) }, "Run again"),
+          h("button", { "data-write": true, onclick: () => app.go(`#new/${run.id}`) }, "Run again"),
           h("button", { "aria-pressed": String(inCompare), disabled: !inCompare && app.compareIds.length >= app.maxCompare,
             onclick: () => { app.toggleCompare(run.id); render(); } }, inCompare ? "In comparison" : "Add to comparison"))),
       h("div", { class: "chips" },
@@ -80,7 +80,7 @@ export function mount(main, runId, app) {
       return h("div", { class: "stat", "--series": seriesVar(i) },
         h("div", { class: "label" }, h("span", { class: "swatch" }), agentLabel(a, perAgent)),
         h("div", { class: "hero" }, hero === null ? "–" : fmtNum(hero, 1),
-          h("small", {}, ev ? "apples · test (100 games)" : a.algorithm === "ga" && hasPop(data.history[a.id])
+          h("small", {}, ev ? `apples · test (${ev.games ?? 100} games)` : a.algorithm === "ga" && hasPop(data.history[a.id])
             ? "apples · kept networks, last 100 games" : "apples · mean of last 100")),
         h("div", { class: "sub" },
           ev ? h("span", {}, "median ", h("b", {}, fmtNum(ev.median, 1)), " · max ", h("b", {}, ev.max)) : null,
@@ -276,9 +276,9 @@ export function mount(main, runId, app) {
       blocked ? h("div", { class: "msg error" }, rec.errors.join(" ")) : null,
       (rec.warnings || []).map((w) => h("div", { class: "msg warn" }, w)),
       h("div", { class: "btn-row" },
-        h("button", { class: "primary", disabled: blocked, title: "Queue this run now, exactly as recommended",
+        h("button", { "data-write": true, class: "primary", disabled: blocked, title: "Queue this run now, exactly as recommended",
           onclick: (e) => launchRec(run, i, e.currentTarget) }, rec.launched?.length ? "Launch again" : "Launch"),
-        h("button", { disabled: blocked, title: "Open it in New run to change something first", onclick: () => {
+        h("button", { "data-write": true, disabled: blocked, title: "Open it in New run to change something first", onclick: () => {
           app.draft = { config: rec.config, origin: { run: run.id, index: i }, title: rec.title, seeds: run.group?.size || 1 };
           app.go("#new/draft");
         } }, "Edit first")),
@@ -311,19 +311,19 @@ export function mount(main, runId, app) {
         `${run.analysis.model || "The model"} is reading this run's settings, learning curves and test games… usually under a minute.`));
     } else if (!llm.configured) {
       add(head("Get an explanation of this run and suggested next experiments."),
-        h("p", { class: "small muted" }, "Not set up: add TOKENROUTER_BASE_URL and TOKENROUTER_API_KEY to a .env file "
+        h("p", { class: "small muted" }, "Not set up: add a TokenRouter or OpenRouter API key to a .env file "
           + "(see .env.example), then restart the dashboard."));
     } else if (!a) {
       add(head(st === "error" ? null : "An LLM explains what happened and why, writes it into the lesson, "
           + "and suggests next runs you can launch with one click.",
-        h("button", { class: st === "error" ? "" : "primary", onclick: () => analyze(run) }, st === "error" ? "Try again" : "Analyze this run")),
+        h("button", { "data-write": true, class: st === "error" ? "" : "primary", onclick: () => analyze(run) }, st === "error" ? "Try again" : "Analyze this run")),
         st === "error" ? h("div", { class: "msg error" }, run.analysis.error || "The analysis failed.") : null,
         st === "done" ? h("p", { class: "muted" }, "Loading…") : null);
     } else {
       const r = a.result;
       recommendedIndex = a.recommended ?? a.recommendations.findIndex((x) => !x.errors?.length);
       add(head(`by ${a.model} · ${fmtDate(a.created)} · also saved in the lesson's LESSON.md`,
-          h("button", { class: "ghost small", onclick: () => analyze(run), title: "Ask again (replaces this analysis)" }, "Re-analyze")),
+          h("button", { "data-write": true, class: "ghost small", onclick: () => analyze(run), title: "Ask again (replaces this analysis)" }, "Re-analyze")),
         a.last_error ? h("div", { class: "msg warn" }, `Analysing it again failed (${a.last_error}). This is the earlier analysis.`) : null,
         h("p", { class: "headline" }, r.headline),
         h("div", { class: "callout" }, h("b", {}, "What we learned"), markdown(r.learned),

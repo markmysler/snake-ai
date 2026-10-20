@@ -81,6 +81,8 @@ function parseHash() {
 
 function render() {
   const { tab, param } = parseHash();
+  if (app.catalog?.read_only && tab === "new") { location.hash = "#runs"; return; }  // nothing can be launched
+  if (app.catalog?.read_only && tab === "new") { location.hash = "#runs"; return; }  // nothing can be launched
   app.view?.unmount?.();
   const main = document.getElementById("main");
   main.replaceChildren();
@@ -100,6 +102,14 @@ window.addEventListener("hashchange", render);
 (async () => {
   app.catalog = await api.get("/api/catalog");
   setGlossary(app.catalog.glossary);
+  if (app.catalog.read_only) {  // a shared demo: every button that changes something is hidden (data-write)
+    document.body.classList.add("read-only");
+    document.getElementById("demo-badge").hidden = false;
+  }
+  if (app.catalog.read_only) {  // a shared demo: every button that changes something is hidden (data-write)
+    document.body.classList.add("read-only");
+    document.getElementById("demo-badge").hidden = false;
+  }
   render();
 })();
 window.snakeLab = app; // handy in devtools

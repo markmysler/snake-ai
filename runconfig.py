@@ -76,8 +76,17 @@ def validate(c):
             e, w = rewards.validate(agent_reward(c, a))
             errors += e
             warnings += w
-    if c["time_budget_min"] <= 0:
+    if c["time_budget_min"] <= 0 and not all(a["algorithm"] == "jev" for a in c["agents"]):  # (jev stops by itself)
         warnings.append("No time budget: the run trains until you stop it.")
+    if any(a["algorithm"] == "jev" for a in c["agents"]):
+        import jev
+        if not jev.configured():
+            errors.append("jev runs on TokenRouter: add TOKENROUTER_API_KEY to .env (see .env.example).")
+        if c["time_budget_min"]:
+            warnings.append("jev plays its test games until they end; a time limit may cut some short (they are then "
+                            "left out). Use no time limit for a jev-only run.")
+    if any(a["params"].get("net") == "conv" for a in c["agents"]) and not visions.picture_info(c["vision"]):
+        errors.append("The CNN network reads pictures: pick the window or whole-board vision, or use the MLP.")
     inputs = visions.state_size(c["vision"], c["width"], c["height"])
     if inputs > 2000:
         warnings.append(f"This vision gives {inputs:,} inputs: training will be slow (see lesson 02).")

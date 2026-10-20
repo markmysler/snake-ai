@@ -67,6 +67,36 @@ EXTRA = {
                "up": "Learns faster at first, but can become unstable and forget.",
                "down": "Steadier but slower learning.",
                "aliases": ["learning rate", "lr"]},
+    "jev": {"long": "TypeSafe's decision model, used as a Snake player through TokenRouter. It doesn't learn from games: "
+                    "each move it is told what the snake senses (the vision's inputs as text, or its pictures as small "
+                    "character grids) and picks left, straight or right, with a probability for each. So a jev run has no "
+                    "training: it plays the fixed test games directly, many boards per request. Compare it with the GA and "
+                    "DQN to see what a general model brings without any practice, and what practice adds.",
+            "aliases": ["decision model", "TypeSafe"], "related": ["jev.prompt", "c.test-score"]},
+    "jev.games": {"long": "How many of the fixed test games jev plays. They are the first games of the same 100 every "
+                          "other model is tested on, so scores compare, but with fewer games they are less certain.",
+                  "up": "A surer test score; costs more and takes longer.",
+                  "down": "Cheaper and faster; one lucky or unlucky game moves the mean more."},
+    "jev.prompt": {"long": "The instructions jev gets with every move. They are its only 'training': you improve it by "
+                           "rewriting them, not by playing more. \"Just the rules\" explains the game; \"Rules + stay safe\" "
+                           "also tells it to avoid deadly squares and keep room to move.",
+                   "up": "Rules + stay safe: more guidance, usually fewer crashes, sometimes more cautious wandering.",
+                   "down": "Just the rules: shows what jev does with no advice at all.",
+                   "aliases": ["prompt", "instructions"], "related": ["jev"]},
+    "jev.batch": {"long": "How many boards are asked about in one request. A request takes about 1.5 seconds whether it "
+                          "holds 1 board or 100, and costs less per board when it holds many.",
+                  "up": "Faster and cheaper per move.", "down": "Slower: one request per board per move."},
+    "jev.max_cost": {"long": "The most a run may spend on jev requests, in US dollars. The run stops before going over; "
+                             "games still being played are then left out of its result.",
+                     "up": "Room for more or longer games.", "down": "A hard stop on spending."},
+    "dqn.net": {"long": "Which kind of neural network DQN trains. MLP (fully connected): every input connects to every "
+                        "neuron, so a picture is just a long list of numbers and the network must learn that neighbouring "
+                        "squares are related. CNN (convolutional): small 3×3 filters slide over the window or whole-board "
+                        "pictures, so a pattern such as \"wall ahead\" is learned once and recognised anywhere. Only "
+                        "the picture visions (window, full) can use it.",
+                "up": "CNN: fewer weights for big pictures and patterns that carry over between places; slower per step.",
+                "down": "MLP: the only choice for the hint and ray visions; fast, but wasteful with pictures.",
+                "aliases": ["CNN", "convolutional", "convolutional network", "MLP"], "related": ["vision.full", "vision.window"]},
     "dqn.gamma": {"long": "Discount factor: how much a reward k moves in the future counts now (gamma^k). It sets "
                           "how far ahead the snake plans: roughly 1 / (1 − gamma) moves, so 0.95 ≈ 20 moves and "
                           "0.99 ≈ 100 moves.",
@@ -291,7 +321,8 @@ def entries():
         out.append(_entry(algo.name, algo.label, "algorithm", algo.description))
         for p in algo.params:
             out.append(_entry(f"{algo.name}.{p['name']}", p["label"], "setting", p.get("help") or p["label"], group=algo.name,
-                              default=p["default"], min=p["min"], max=p["max"], name=p["name"]))
+                              default=p["default"], min=p.get("min"), max=p.get("max"), name=p["name"],
+                              options=p.get("options")))
     for v in visions.VISIONS.values():
         out.append(_entry(f"vision.{v.name}", v.label, "vision", v.description, name=v.name))
         for p in v.params:

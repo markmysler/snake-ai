@@ -1,0 +1,161 @@
+{
+  "state": "done",
+  "model": "claude-haiku-5-5",
+  "created": "2026-10-20 19:20:51",
+  "seconds": 43.6,
+  "usage": {
+    "model": "claude-haiku-5-5",
+    "prompt_tokens": 15880,
+    "completion_tokens": 5073
+  },
+  "result": {
+    "headline": "The CNN reached a test mean of 27.66 apples (seed group 26.06 \u00b1 1.4), about 5 apples behind the MLP's ~31.5 on the same whole-board view, while using roughly a third of the environment steps in the same 10 minutes.",
+    "summary": "**DQN with the CNN** (seed 0, 4 torch threads) scored **27.66** mean apples on the 100 fixed test games, with median 27.5 and best 42. Across its three seeds the mean is 26.06 (range 25.08\u201327.66). Test games ended in 24 wall crashes and 76 body crashes, with no starvation, using 227 steps per game and 8 steps per apple. Training used 200,000 environment steps over 3,920 games. The training curve climbs slowly for about 4 minutes, from a mean of 0.17 to 4.03 over the last 100 games, then rises fast to about 21 by minute 7 and stays there (21.58 at minute 10). The best game rose from 2 to 42 over the run.\n\n**The MLP runs on the same view** (3 seeds, 10 minutes, 1 thread) reached 31.87, 31.64 and 30.97 on the test games, about 31.5 on average. They trained for roughly 600,000\u2013650,000 steps, about three times as many as this CNN run, with a similar death mix (about 65\u201372% body crashes) and 9 steps per apple. The spread across MLP seeds is under 1 apple, and the CNN spread is 1.4, so the gap of about 5 apples is larger than the seed noise across these three seeds each.",
+    "diagnosis": "The most likely reason for the gap is compute, not picture understanding. The CNN is slower per step: its steps per second fell from about 2,300 at the start to about 280 later, and over the whole run it averaged about 330 steps per second against the MLP's roughly 1,000. In 10 minutes it therefore saw about a third of the experience, and the curve flattens around 170,000 steps, which is about when exploration reaches its floor (`eps_decay_steps` is 100,000).\n\nThis run also changed a second thing. The earlier CNN runs used 1 thread and reached only about 94,000\u2013103,000 steps and a test mean of about 12. The 4-thread CNN runs reached 144,000\u2013200,000 steps and about 26. So the jump from 12 to 26 came mostly from extra compute, not from the change of view. The thread count is not a recipe setting, so this confound cannot be removed with the catalog. Also, two runs shared the machine, which adds noise to the steps-per-second numbers. The CNN may still be more sample-efficient, but this run cannot show it, because no MLP curve is recorded at the same step count.",
+    "learned": "Compare algorithms at equal compute, not only equal minutes: a model that is slower per step can lose on the clock while being better per step. Also check that only one thing changed between runs, since thread count alone moved the CNN's score from about 12 to about 26.",
+    "prediction_check": "The lesson's written prediction that the CNN gets fewer steps in 10 minutes held (about 145,000\u2013200,000 steps against about 600,000 for the MLP). The other half, that it learns the pattern more efficiently, is not supported: its test mean was lower, and this run cannot show a fair per-step comparison."
+  },
+  "recommendations": [
+    {
+      "title": "Give the CNN 30 minutes",
+      "why": "If the CNN is mainly limited by its slower steps, a 3x longer run should let it catch up to the MLP's roughly 31.5. If it stays about 5 apples behind, the CNN is worse even with the same time to train.",
+      "change": "Increase the time budget from 10 to 30 minutes, keeping the CNN and the whole-board view.",
+      "prediction": "Test mean rises from about 26 (seed mean) to about 30\u201332, close to the MLP's 10-minute score; steps reach about 450,000\u2013600,000.",
+      "question": "Does the CNN catch up when it gets as many environment steps as the MLP did in 10 minutes?",
+      "new_lesson": false,
+      "lesson_slug": "10-cnn-for-pictures",
+      "recipe": {
+        "time_budget_min": 30.0
+      },
+      "config": {
+        "lesson": "10-cnn-for-pictures",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "full"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0
+        },
+        "agents": [
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000,
+              "net": "conv"
+            }
+          }
+        ],
+        "time_budget_min": 30.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "training time (min) 10 \u2192 30"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Try a smaller window around the head",
+      "why": "The full board makes the CNN's input picture large and slows each step. A 9x9 window around the head keeps most of the useful local information while making the picture smaller, so the CNN could train faster per second.",
+      "change": "Switch the vision from the full board to a window of radius 4 (9x9 squares around the head), keeping the CNN and the 10-minute budget.",
+      "prediction": "Steps per second rise above the 330 average seen here, and the test mean stays within a few apples of 27.7 or improves; the snake may lose some long-range view.",
+      "question": "Does a smaller picture let the CNN take more steps in the same time without losing much skill?",
+      "new_lesson": true,
+      "lesson_slug": "window-picture-size",
+      "recipe": {
+        "vision": {
+          "type": "window",
+          "radius": 4
+        }
+      },
+      "config": {
+        "lesson": "10-cnn-for-pictures",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "window",
+          "radius": 4
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0
+        },
+        "agents": [
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000,
+              "net": "conv"
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "vision full \u2192 window:radius=4"
+      ],
+      "launched": []
+    }
+  ],
+  "recommended": 0,
+  "ideas": [
+    {
+      "id": "idea-45",
+      "title": "Compare algorithms at matched environment steps",
+      "kind": "dashboard",
+      "what": "Add a dashboard view that plots each run's score against environment steps (and optionally against minutes), with a button to pick a common step count and show each run's test or training score at that point.",
+      "why": "The CNN and MLP here had 145,000\u2013200,000 and 600,000 steps. Without a matched view, a fair per-step comparison requires reading curves by hand, and this run could not decide whether the CNN is more efficient per step.",
+      "expected": "A clear answer to whether the CNN is ahead at 150,000 steps, instead of the current inference from final scores.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 19:20:51",
+      "source": {
+        "run": "10-cnn-for-pictures/2026-10-20_185929",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-46",
+      "title": "Expose torch thread count in the recipe",
+      "kind": "setting",
+      "what": "Add a `threads` setting to each DQN agent's parameters so the lab can set the number of CPU threads per agent in the recipe and record it in the run.",
+      "why": "Moving from 1 to 4 threads raised the CNN's steps from about 95,000\u2013100,000 to 145,000\u2013200,000 and its test mean from about 12 to about 26. This confound can only be avoided by controlling compute from the recipe.",
+      "expected": "Runs that differ only in architecture can be compared at equal compute, and the 1-thread versus 4-thread gap would be a labelled, separate experiment.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 19:20:51",
+      "source": {
+        "run": "10-cnn-for-pictures/2026-10-20_185929",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    }
+  ]
+}

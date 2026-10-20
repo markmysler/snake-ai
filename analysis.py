@@ -222,7 +222,8 @@ def catalog():
                                 for f in rewards.catalog()["features"]],
             "reward_presets": rewards.PRESETS,
             "algorithms": [{"name": a["name"], "description": a["description"],
-                            "params": [{k: p[k] for k in ("name", "default", "min", "max", "help")} for p in a["params"]]}
+                            "params": [{k: p[k] for k in ("name", "default", "min", "max", "options", "help") if k in p}
+                                       for p in a["params"]]}
                            for a in algorithms.catalog()],
             "limits": {"width/height": [6, 30], "time_budget_min": [0.1, runconfig.MAX_BUDGET_MIN]}}
 

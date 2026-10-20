@@ -42,13 +42,57 @@ class MLPPolicy:
 
 
 def scores_of(act):
-    """The output values behind a policy's act function (MLPPolicy.act or TorchPolicy.act)."""
+    """The output values behind a policy's act function (MLPPolicy.act, TorchPolicy.act or a replay's act)."""
     return act.__self__.scores
+
+
+class RecordedPolicy:
+    """Games a remote model (jev) played, kept with every move and how sure it was of it. It can't play new games:
+    the dashboard replays these, by seed (see for_seed)."""
+
+    def __init__(self, data):
+        self.data = data
+        self.games = {int(g["seed"]): g for g in data.get("games", [])}
+
+    def seeds(self):
+        return sorted(self.games)
+
+    def for_seed(self, seed):
+        return Replay(self.games[int(seed)])
+
+    def act(self, state):
+        raise RuntimeError("a recorded player can only replay its own games (use for_seed)")
+
+
+class Replay:
+    """One recorded game, move by move: act() returns the next recorded move; scores() its log-probabilities."""
+
+    def __init__(self, game):
+        self.game, self.i = game, 0
+
+    def scores(self, state, step=None):
+        p = self.game["probs"][self.i if step is None else step]
+        return np.log(np.maximum(np.asarray(p, dtype=np.float64), 1e-6))
+
+    def act(self, state):
+        a = self.game["actions"][min(self.i, len(self.game["actions"]) - 1)]
+        self.i += 1
+        return int(a)
 
 
 def load_policy(path, meta=None):
     """Load a saved model. Returns (act_fn, meta); meta always has vision, width, height.
-    .npy = GA genome (+ .json sidecar, or pass `meta`), .pt = DQN checkpoint."""
+    .npy = GA genome (+ .json sidecar, or pass `meta`), .pt = DQN checkpoint, .json = recorded jev games
+    (act is then RecordedPolicy.act, which replays them by seed: see RecordedPolicy)."""
+    if path.endswith(".json"):
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        policy = RecordedPolicy(data)
+        meta = {**(meta or {}), **{k: v for k, v in data.items() if k != "games"}, "recorded": True}
+        meta["vision"] = visions.parse(meta.get("vision", "short"))
+        meta.setdefault("width", 10)
+        meta.setdefault("height", 10)
+        return policy.act, meta
     if path.endswith(".npy"):
         meta_path = os.path.splitext(path)[0] + ".json"
         meta = dict(meta or {})

@@ -46,6 +46,7 @@ export class EndChart {
         return { x: r[mode.col], y: (r[col + j] / total) * 100 };
       }),
     }));
+    this.chart.options.scales.x.max = pts.length ? pts.at(-1)[mode.col] : undefined;  // end at the data, like the curves
     this.chart.options.scales.x.ticks.callback = (v) => mode.fmt(v);
     this.chart.options.plugins.tooltip.callbacks.title = (items) => items.length ? `${mode.title}: ${mode.fmt(items[0].parsed.x)}` : "";
     this.chart.update();

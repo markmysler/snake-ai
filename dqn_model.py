@@ -9,10 +9,24 @@ DQN_HIDDEN = (128, 128)
 
 
 class QNet(nn.Module):
-    def __init__(self, n_in, hidden=DQN_HIDDEN, n_out=N_ACTIONS):
+    """state -> hidden layers -> one Q-value per move. With `picture` (vision.picture_info: channels, side), the
+    first channels x side x side inputs are read as images by a small CNN first; the rest (e.g. the window's apple
+    flags) join its output before the hidden layers."""
+
+    def __init__(self, n_in, hidden=DQN_HIDDEN, n_out=N_ACTIONS, picture=None):
         super().__init__()
-        self.n_in, self.hidden = n_in, tuple(hidden)
-        layers, prev = [], n_in
+        self.n_in, self.hidden, self.picture = n_in, tuple(hidden), picture
+        prev = n_in
+        if picture:
+            c, s = len(picture["channels"]), picture["side"]
+            self.shape, self.pic_size = (c, s, s), c * s * s
+            stride = 2 if s >= 9 else 1  # big pictures (the whole board) are halved twice
+            self.conv = nn.Sequential(nn.Conv2d(c, 16, 3, padding=1), nn.ReLU(),
+                                      nn.Conv2d(16, 32, 3, stride=stride, padding=1), nn.ReLU(),
+                                      nn.Conv2d(32, 32, 3, stride=stride, padding=1), nn.ReLU(), nn.Flatten())
+            with torch.no_grad():
+                prev = self.conv(torch.zeros(1, *self.shape)).shape[1] + n_in - self.pic_size
+        layers = []
         for h in self.hidden:
             layers += [nn.Linear(prev, h), nn.ReLU()]
             prev = h
@@ -20,13 +34,19 @@ class QNet(nn.Module):
         self.net = nn.Sequential(*layers)
 
     def forward(self, x):
-        return self.net(x)
+        single = x.dim() == 1
+        if single:
+            x = x.unsqueeze(0)
+        if self.picture:
+            x = torch.cat([self.conv(x[:, :self.pic_size].reshape(-1, *self.shape)), x[:, self.pic_size:]], 1)
+        out = self.net(x)
+        return out.squeeze(0) if single else out
 
 
 def save_checkpoint(f, net, **meta):
     """Save weights + metadata. `f` is a path or a binary file object."""
     state = {k: v.detach().cpu().clone() for k, v in net.state_dict().items()}
-    torch.save({"state_dict": state, "hidden": list(net.hidden), "n_in": net.n_in, **meta}, f)
+    torch.save({"state_dict": state, "hidden": list(net.hidden), "n_in": net.n_in, "picture": net.picture, **meta}, f)
 
 
 def load_qnet(f):
@@ -34,7 +54,7 @@ def load_qnet(f):
     ckpt = torch.load(f, map_location="cpu", weights_only=True)
     state = ckpt.pop("state_dict")
     n_in = ckpt.pop("n_in", None) or state["net.0.weight"].shape[1]  # older checkpoints
-    net = QNet(n_in, hidden=ckpt.pop("hidden"))
+    net = QNet(n_in, hidden=ckpt.pop("hidden"), picture=ckpt.pop("picture", None))
     net.load_state_dict(state)
     net.eval()
     return net, ckpt

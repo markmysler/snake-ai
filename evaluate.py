@@ -16,6 +16,10 @@ EVAL_SEED = 2_000_000  # disjoint from training and DQN-checkpoint seeds
 
 def evaluate(path, games=100, seed=EVAL_SEED, width=None, height=None):
     act, meta = load_policy(path)
+    if meta.get("recorded"):  # jev: it played the first test games itself; they are its result (fewer than 100)
+        if not meta.get("evaluation"):
+            raise ValueError(f"{path}: no finished games")
+        return {"model": path, "vision": visions.to_string(meta["vision"]), **meta["evaluation"]}
     width, height = width or meta["width"], height or meta["height"]
     if meta["vision"]["type"] != "short" and (width, height) != (meta["width"], meta["height"]):
         raise SystemExit(f"{path}: this vision only works on the grid it was trained on")

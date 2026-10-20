@@ -11,8 +11,8 @@ MAX_REPLAY_STEPS = 20_000
 
 
 def play_game(act, width=10, height=10, seed=None, vision="short"):
-    env = SnakeEnv(width, height, seed=seed, vision=vision)
-    state = env.reset()
+    env = SnakeEnv(width, height, vision=vision)
+    state = env.reset(seed=seed)  # the same way evaluate.py starts a test game
 
     def cell(c):
         return c[1] * width + c[0]

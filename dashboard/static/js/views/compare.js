@@ -141,7 +141,8 @@ export function mount(main, param, app) {
       v === null ? "–" : h("span", { class: best !== null && i === best ? "best" : "" }, v))));
     return h("section", { class: "card" },
       h("div", { class: "section-head" }, h("div", {}, h("h2", {}, "Test results"),
-        h("p", {}, "Each saved best model plays the same 100 games (fixed seeds, no exploration). Higher is better; the best is bold.")),
+        h("p", {}, "Each saved best model plays the same 100 games (fixed seeds, no exploration; jev plays only the first few, "
+          + "its game count is shown). Higher is better; the best is bold.")),
         h("div", { class: "btn-row small muted" }, outcomeLegend(), info("c.game-end"))),
       h("div", { class: "table-scroll" }, h("table", {},
         h("thead", {}, h("tr", {}, h("th", {}, "Agent"), rs.map((r, i) => h("th", { class: "r", "--series": seriesVar(i) },
@@ -152,7 +153,8 @@ export function mount(main, param, app) {
             const means = evs.map((e) => (e ? e.mean : -1));
             const best = Math.max(...means) >= 0 ? means.indexOf(Math.max(...means)) : null;
             const sample = rs.find((r) => r.agents.some((a) => a.id === id)).agents.find((a) => a.id === id);
-            const testCell = (e) => (e ? h("span", {}, fmtNum(e.mean, 2), h("span", { class: "muted small" }, `  median ${fmtNum(e.median, 1)} · max ${e.max}`)) : null);
+            const testCell = (e) => (e ? h("span", {}, fmtNum(e.mean, 2), h("span", { class: "muted small" }, `  median ${fmtNum(e.median, 1)} · max ${e.max}`
+              + (e.games && e.games !== 100 ? ` · ${e.games} games` : ""))) : null);
             return [
               row(h("span", {}, agentLabel(sample), h("span", { class: "muted small" }, "  test score")), evs.map(testCell),
                 rs.filter((_, i) => evs[i]).length > 1 ? best : null),

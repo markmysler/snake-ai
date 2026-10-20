@@ -24,7 +24,7 @@ export function mount(main, _param, app) {
       h("div", {}, h("h1", {}, "Runs"),
         h("p", { class: "lead" }, "Every training run is saved here with its recipe, its stats and the best model of each "
           + "agent. Watch one, run it again with one change, or pick up to three to compare.")),
-      h("button", { class: "primary", onclick: () => app.go("#new") }, "New run")),
+      h("button", { "data-write": true, class: "primary", onclick: () => app.go("#new") }, "New run")),
     active, machine,
     h("div", { class: "toolbar" }, search, lessonSel, statusSel),
     list, bar));
@@ -49,7 +49,7 @@ export function mount(main, _param, app) {
               ? `${fmtDuration(elapsed)} of ${r.budget_min ? fmtDuration(r.budget_min * 60) : "∞"}` : "waiting for a free slot"),
             h("div", { class: "btn-row" },
               r.status === "running" ? h("button", { onclick: () => app.go(`#watch/${r.id}`) }, "Watch") : null,
-              h("button", { onclick: () => stop(r) }, r.status === "running" ? "Stop & save" : "Remove"))));
+              h("button", { "data-write": true, onclick: () => stop(r) }, r.status === "running" ? "Stop & save" : "Remove"))));
       }))));
   }
 
@@ -88,7 +88,7 @@ export function mount(main, _param, app) {
     return h("div", { class: "table-scroll" }, h("table", { class: "runs-table" },
       h("thead", {}, h("tr", {}, h("th", {}, h("span", { class: "hidden" }, "Compare")), h("th", {}, "Run"),
         h("th", {}, "Status"), h("th", {}, "Vision"), h("th", {}, "Reward"),
-        h("th", {}, "Eval (mean apples, 100 games)"), h("th", {}, "Time"), h("th", { class: "r" }, "Actions"))),
+        h("th", {}, "Test (mean apples)"), h("th", {}, "Time"), h("th", { class: "r" }, "Actions"))),
       h("tbody", {}, rowsFor(lr))));
   }
 
@@ -155,14 +155,14 @@ export function mount(main, _param, app) {
           h("button", { onclick: () => readLesson(entry.lesson) }, "Read lesson"),
           ids.length >= 2 ? h("button", { title: "Compare this lesson's recipes (and what they change from) side by side",
             onclick: () => { app.setCompare(ids); app.go(`#compare/${ids.join(",")}`); } }, "Compare") : null,
-          missing ? h("button", { class: "primary", onclick: (e) => train(entry, e.currentTarget),
+          missing ? h("button", { "data-write": true, class: "primary", onclick: (e) => train(entry, e.currentTarget),
             title: `Queue ${missing} recipe(s) × ${entry.seeds} seeds, 10 minutes each` }, "Train this lesson") : null)),
       h("div", { class: "chips" }, h("span", { class: "small muted" }, "Recipes"), recipes.map((s) => h("span", {
         class: "chip" + (s.done >= entry.seeds ? " done" : ""), title: s.active ? `${s.active} queued or training` : "" },
         h("b", {}, s.rc.name), ` ${s.done}/${entry.seeds} seeds${s.active ? " · training" : ""}`))),
       entry.terms?.length ? h("div", { class: "chips terms" }, h("span", { class: "small muted" }, "Terms"),
         entry.terms.map(termChip)) : null,
-      tries.length ? h("div", { class: "btn-row try-row" }, h("span", { class: "small muted" }, "Try this"), tries) : null,
+      tries.length ? h("div", { class: "btn-row try-row", "data-write": true }, h("span", { class: "small muted" }, "Try this"), tries) : null,
       lr.length ? runsTable(lr) : null);
   }
 
@@ -187,7 +187,7 @@ export function mount(main, _param, app) {
     if (!app.runs.length && !courseCards.length) {
       parts.push(h("div", { class: "card empty" }, h("strong", {}, "No runs yet"),
         "Start one: pick what the snake sees, how it is rewarded and which algorithms learn.",
-        h("button", { class: "primary", onclick: () => app.go("#new") }, "New run")));
+        h("button", { "data-write": true, class: "primary", onclick: () => app.go("#new") }, "New run")));
     } else if (!parts.length) {
       parts.push(h("div", { class: "card empty" }, "No runs match these filters."));
     }
@@ -236,7 +236,7 @@ export function mount(main, _param, app) {
       h("td", { class: "wide" }, h("div", { class: "actions" },
         analysed ? recommendedButton(analysed) : null,
         h("button", { onclick: () => app.go(`#watch/${first.id}`) }, "Watch"),
-        h("button", { onclick: () => app.go(`#new/${first.id}`), title: "Open this recipe (all its seeds) in New run" }, "Run again"),
+        h("button", { "data-write": true, onclick: () => app.go(`#new/${first.id}`), title: "Open this recipe (all its seeds) in New run" }, "Run again"),
         h("button", { onclick: toggle }, open ? "Hide seeds" : "Show seeds"))));
   }
 
@@ -266,9 +266,9 @@ export function mount(main, _param, app) {
       h("td", { class: "wide" }, h("div", { class: "actions" },
         member ? null : recommendedButton(r),
         h("button", { onclick: () => app.go(`#watch/${r.id}`) }, "Watch"),
-        h("button", { onclick: () => app.go(`#new/${r.id}`), title: "Open this recipe in New run" }, "Run again"),
-        h("button", { onclick: () => edit(r) }, "Edit"),
-        h("button", { class: "danger", disabled: r.status === "running", onclick: () => remove(r),
+        h("button", { "data-write": true, onclick: () => app.go(`#new/${r.id}`), title: "Open this recipe in New run" }, "Run again"),
+        h("button", { "data-write": true, onclick: () => edit(r) }, "Edit"),
+        h("button", { "data-write": true, class: "danger", disabled: r.status === "running", onclick: () => remove(r),
           title: r.status === "running" ? "Stop the run first" : "Delete this run and its models" }, "Delete"))));
   }
 
@@ -280,7 +280,7 @@ export function mount(main, _param, app) {
       return h("button", { title: `“${rec.title}” was launched as ${rec.launched.at(-1)}`,
         onclick: () => app.go(`#watch/${rec.launched.at(-1)}`) }, "Next run →");
     }
-    return h("button", { class: "primary", title: `${rec.title}: ${rec.changes.join("; ") || "same recipe"}`
+    return h("button", { "data-write": true, class: "primary", title: `${rec.title}: ${rec.changes.join("; ") || "same recipe"}`
         + `${rec.prediction ? `\nPrediction: ${rec.prediction}` : ""}\nRecorded in ${rec.lesson}`,
       onclick: async (e) => {
         e.currentTarget.disabled = true;

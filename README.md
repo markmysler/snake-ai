@@ -4,7 +4,10 @@ A learning project and a small lab: neural networks learn to play Snake, and you
 
 <p align="center"><img src="docs/img/boards.gif" alt="Three trained snakes playing side by side: a genetic algorithm and two DQN agents" width="720"></p>
 
-- **Two training algorithms:** a genetic algorithm (evolution, numpy) and Deep Q-learning (PyTorch).
+- **Two training algorithms:** a genetic algorithm (evolution, numpy) and Deep Q-learning (PyTorch), with an MLP or a small
+  CNN for the picture visions.
+- **A third player that never trains:** jev, TypeSafe's decision model, plays from a text description of what the snake
+  senses (optional, paid per move, through TokenRouter).
 - **Five visions:**
   - the 11 hints from lesson 01;
   - rays that look *N* squares ahead;
@@ -59,7 +62,11 @@ The volumes keep runs and ideas on your disk. Inside a container the planner use
 
 The JavaScript libraries (Chart.js, marked) are vendored in `dashboard/static/vendor/`, so everything works offline.
 
-For the AI analysis, copy `.env.example` to `.env` in this folder and fill in your key. Any OpenAI-compatible API works; the default is TokenRouter with `anthropic/claude-haiku-5.5` (set `SNAKE_AI_LLM_MODEL` for another). `.env` is git-ignored. Everything else works without it.
+For the AI analysis, copy `.env.example` to `.env` in this folder and add an API key for **TokenRouter**
+(`TOKENROUTER_API_KEY`) or **OpenRouter** (`OPENROUTER_API_KEY`). With both, TokenRouter is used unless
+`SNAKE_AI_LLM_PROVIDER=openrouter`. The default model is `anthropic/claude-haiku-5.5` on either (set `SNAKE_AI_LLM_MODEL`
+for another). Any other OpenAI-compatible API works too: set `TOKENROUTER_BASE_URL` and `TOKENROUTER_API_KEY` to it.
+`python llm.py` checks the setup with a tiny request. `.env` is git-ignored. Everything else works without it.
 
 ## Quick start
 
@@ -173,7 +180,17 @@ The GA uses the same reward as the DQN: its fitness is a genome's average total 
 ### Algorithms (`algorithms.py`)
 
 - **`ga`:** population, games per genome, elite fraction, tournament size, mutation rate and size. Parallel worker processes.
-- **`dqn`:** learning rate, gamma, batch, replay buffer, exploration decay, target sync, parallel games, evaluation interval. Uses torch threads.
+- **`dqn`:** learning rate, gamma, batch, replay buffer, exploration decay, target sync, parallel games, evaluation interval,
+  and the **network**: an MLP, or a small **CNN** (three 3×3 convolution layers) that reads the `window` and `full` pictures
+  as images. Uses torch threads.
+- **`jev`:** TypeSafe's decision model (`jev.py`, `train_jev.py`). It doesn't learn: each move it gets what the snake
+  senses as text (said relative to its heading, or the pictures as small character grids) and picks left, straight or
+  right with a probability for each. So a jev run has no training phase; it plays the fixed test games itself, up to 100
+  boards per request. Settings: test games (default 20), **instructions** (its only "training": *Just the rules* or
+  *Rules + stay safe*), boards per request, and a spending cap. It needs `TOKENROUTER_API_KEY`; New run shows the
+  estimated cost (about $0.03 for 20 games) and asks before starting. Its moves and probabilities are saved, so Watch
+  and Inspect replay its games without calling it again. Its test score covers fewer games than the others' 100, and the
+  dashboard says so.
 
 ### How a run uses the machine (`system.py`)
 
@@ -216,6 +233,18 @@ to train the recipe N times with seeds *seed, seed+1, …*: a **seed group**.
 
 The queue trains as many runs at once as the Runs tab allows. Raise it to finish a group sooner, but runs then share the CPU, so
 wall-clock speed is not comparable with runs trained alone.
+
+## Sharing a read-only demo
+
+```bash
+python -m dashboard.server --read-only --host 0.0.0.0 --port 8000
+docker run --rm -p 8000:8000 snake-ai python -m dashboard.server --read-only --host 0.0.0.0 --port 8000
+```
+
+Everyone can browse the runs and lessons, watch the snakes, inspect games, compare runs and read the glossary, but the
+server refuses anything that changes the lab (launching, editing, deleting, analysing, training the course) with 403, and
+the dashboard hides those buttons and this machine's details. A good way to share the trained course, e.g. on a small
+server or a Hugging Face Space.
 
 ## Lessons: the course and the notebook
 
@@ -263,6 +292,8 @@ machine, and the course uses one setting for all its runs, so wall-clock compari
 **The notebook** is every other lesson: your own, and the experiments that came before the course (several were its pilots).
 1. **01 · Short vision:** the baseline. How the GA and DQN learn.
 2. **02 · Full vision:** more information isn't free. DQN learned just as well per step but ran 5× slower; the GA learned much worse.
+3. **10 · A CNN for the whole board:** per env step a small CNN learns as well as the MLP, but each step is several times
+   slower, so in 10 minutes it loses (26.1 test apples with 4 threads, against 31.5 for the MLP with one).
 
 How to run your own experiment:
 1. **New run** → pick or create a lesson, and write your **prediction** first.
@@ -330,14 +361,15 @@ Reviewed ideas are marked *reviewed*. Mark them *planned*, *done* or *dismissed*
 
 ```bash
 python run_all.py [--dashboard-only] [recipe flags] [--parallel N] [--exit-when-done] [--no-browser]
-python -m dashboard.server [--port 8000] [--parallel N]     # the lab on its own
+python -m dashboard.server [--port 8000] [--parallel N] [--read-only]   # the lab on its own
 python experiment.py --lesson 03-x --vision window:radius=2 --reward score --agents ga,dqn --time-budget 10
 python experiment.py --config recipe.json                   # a recipe as JSON
 python experiment.py --stop <lesson>/<run-id>               # stop a running run (it is still evaluated and saved)
 python lessons.py list | evaluate <id> | delete <id> | index | backfill | scrub | import <lesson> --vision short --agents dqn
 python evaluate.py lessons/01-short-vision/runs/<id>/models/*   # 100 fixed-seed games, any vision
 python train_ga.py --vision rays:depth=4 --reward shaped --generations 50   # a trainer on its own
-python train_dqn.py --vision full --reward score --episodes 2000            # (writes results/ + models/)
+python train_dqn.py --vision full --reward score --episodes 2000 [--net conv] # (writes results/ + models/)
+python train_jev.py --vision short --games 20 --prompt careful               # jev plays 20 test games (paid)
 python analysis.py run <lesson>/<run-id>                    # AI analysis of a finished run (needs .env)
 python analysis.py show <lesson>/<run-id>                   # print it
 python analysis.py launch <lesson>/<run-id> 1               # queue recommendation 1 (the dashboard starts it)
@@ -394,11 +426,12 @@ dashboard (FastAPI) ──queue──> experiment.py ──> train_ga.py / train
 | `lessons.py` | the run library: create, list, edit, move, delete, evaluate runs; regenerate `LESSON.md` and the index |
 | `course.py` | the course: `lessons/course.json` in order, queueing its recipes as seed groups, generating its `LESSON.md` blocks, checking what is missing |
 | `publisher.py` | trainers' live output: atomic writes, stats CSV, stop file |
-| `train_ga.py`, `train_dqn.py`, `policies.py`, `dqn_model.py` | the algorithms and their models |
+| `train_ga.py`, `train_dqn.py`, `policies.py`, `dqn_model.py` | the algorithms and their models (MLP and CNN Q-networks) |
+| `jev.py`, `train_jev.py` | jev as a player: what the snake senses in words, batched decisions, recorded games |
 | `evaluate.py` | 100 fixed-seed games for any saved model: score, moves and how each game ended |
 | `glossary.py` | the Learn tab: an entry for every algorithm, setting, vision and reward feature (from the registries) plus general terms |
 | `ideas.py` | the ideas list: improvements that need new code, collected from every analysis, and the AI review of what to build next |
-| `analysis.py`, `llm.py` | AI analysis: build the run's context, ask the LLM, check its recommended recipes, launch one, write the lesson; a tiny OpenAI-compatible client that reads `.env` |
+| `analysis.py`, `llm.py` | AI analysis: build the run's context, ask the LLM, check its recommended recipes, launch one, write the lesson; a tiny OpenAI-compatible client (TokenRouter or OpenRouter) that reads `.env` |
 | `dashboard/server.py`, `hub.py`, `jobs.py`, `store.py`, `replay.py`, `inspector.py` | API + SSE, run list and watchers, the run queue, live/saved weights, compact replay games, Inspect's move-by-move frames |
 | `dashboard/static/` | plain HTML + canvas + Chart.js: `app.js` (tabs), `views/` (runs, new run, watch, compare, best, ideas, learn), `components/` (board, inspector, line chart, endings chart, seed spread, glossary, playback, population) |
 | `tools/screenshots.py` | the README images, re-shot from the running dashboard |
@@ -406,7 +439,12 @@ dashboard (FastAPI) ──queue──> experiment.py ──> train_ga.py / train
 
 ## Roadmap
 
-Plans for what comes next (fairer GA vs DQN comparisons at equal compute, playing it yourself, jev as a third player, a CNN for the picture visions, a read-only demo) are in [docs/ROADMAP.md](docs/ROADMAP.md).
+Plans for what comes next (fairer GA vs DQN comparisons at equal compute, playing it yourself) are in [docs/ROADMAP.md](docs/ROADMAP.md).
+
+## Contributing
+
+Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the set-up, the tests and what makes a
+good lesson.
 
 ## License
 

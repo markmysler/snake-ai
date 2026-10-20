@@ -1,5 +1,5 @@
 {
-  "last": 41,
+  "last": 46,
   "ideas": [
     {
       "id": "idea-1",
@@ -654,6 +654,86 @@
       "created": "2026-10-20 17:53:26",
       "source": {
         "run": "c01-two-ways-to-learn/2026-10-20_131820",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-42",
+      "title": "Step-matched comparison view on the dashboard",
+      "kind": "dashboard",
+      "what": "Add a chart that plots training and test scores against environment steps for every run in a lesson, next to the existing wall-clock chart, so learners can compare methods at equal steps.",
+      "why": "The CNN and MLP ranking is clear on the wall-clock chart, but it hides whether the CNN is worse per step. Equal-step comparisons would separate the speed effect from the learning effect, which this run's question depends on.",
+      "expected": "Learners can see at a glance whether the CNN is behind at equal steps (here, about 6 vs 18 at roughly 100k steps) or only in wall-clock time.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 18:59:20",
+      "source": {
+        "run": "10-cnn-for-pictures/2026-10-20_182749",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-43",
+      "title": "Learning-rate decay during training",
+      "kind": "training",
+      "what": "Add an option that lowers the learning rate on a schedule, for example halving it every fixed number of steps, applied to DQN.",
+      "why": "The MLP's training mean stalled at 20.6 to 23.2 from about 3.6 minutes to the end, after exploration had mostly finished (at 100k steps), so a lower learning rate later may help it settle.",
+      "expected": "A few points on the MLP's plateau (for example from about 31 toward 33 to 35 test apples), though this is a guess that needs testing over several seeds.",
+      "effort": "medium",
+      "status": "new",
+      "created": "2026-10-20 18:59:20",
+      "source": {
+        "run": "10-cnn-for-pictures/2026-10-20_182749",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-44",
+      "title": "Compare algorithms at equal env steps",
+      "kind": "dashboard",
+      "what": "Add a dashboard view that plots the learning curve against env steps as well as wall-clock minutes, and reports the score each run reached at a chosen step count.",
+      "why": "The CNN ran about 6 times slower per step, so comparing at equal minutes mixes up how fast it learns with how fast it computes; this run's lesson question is about learning per step.",
+      "expected": "Shows whether the CNN is more sample-efficient than the MLP even though it is far behind at 10 minutes (for example, its score at about 100,000 env steps against the MLP's score at the same step count).",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 18:59:47",
+      "source": {
+        "run": "10-cnn-for-pictures/2026-10-20_182749-6",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-45",
+      "title": "Compare algorithms at matched environment steps",
+      "kind": "dashboard",
+      "what": "Add a dashboard view that plots each run's score against environment steps (and optionally against minutes), with a button to pick a common step count and show each run's test or training score at that point.",
+      "why": "The CNN and MLP here had 145,000\u2013200,000 and 600,000 steps. Without a matched view, a fair per-step comparison requires reading curves by hand, and this run could not decide whether the CNN is more efficient per step.",
+      "expected": "A clear answer to whether the CNN is ahead at 150,000 steps, instead of the current inference from final scores.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 19:20:51",
+      "source": {
+        "run": "10-cnn-for-pictures/2026-10-20_185929",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-46",
+      "title": "Expose torch thread count in the recipe",
+      "kind": "setting",
+      "what": "Add a `threads` setting to each DQN agent's parameters so the lab can set the number of CPU threads per agent in the recipe and record it in the run.",
+      "why": "Moving from 1 to 4 threads raised the CNN's steps from about 95,000\u2013100,000 to 145,000\u2013200,000 and its test mean from about 12 to about 26. This confound can only be avoided by controlling compute from the recipe.",
+      "expected": "Runs that differ only in architecture can be compared at equal compute, and the 1-thread versus 4-thread gap would be a labelled, separate experiment.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-20 19:20:51",
+      "source": {
+        "run": "10-cnn-for-pictures/2026-10-20_185929",
         "model": "claude-haiku-5-5"
       },
       "review": null

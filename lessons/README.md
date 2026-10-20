@@ -36,3 +36,4 @@ Earlier experiments, kept as they were run. Several were pilots for the course.
 | [07 · Remove the survival reward](07-short-no-survival/LESSON.md) | 2 | short | apple +10, death -10, starve -10, win +100, potential +0.1 | ga 43.5, dqn 20.9 |
 | [08 · Raise the wall-crash penalty to 30](08-wall-crash-penalty/LESSON.md) | 2 | room | apple +10, death_wall -30, death_body -10, starve -10, win +100, potential +0.1 | ga 41.0, dqn 36.5 |
 | [09 · Evaluate each genome on 10 games](09-ga-games-per-genome/LESSON.md) | 3 | room | apple +10, death_wall -10, death_body -10, starve -30, win +100, potential +0.1, hunger -0.01 | ga 39.1 |
+| [10 · A convolutional network for the whole board](10-cnn-for-pictures/LESSON.md) | 9 | full | score | dqn 27.7 |

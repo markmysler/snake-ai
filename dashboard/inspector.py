@@ -11,7 +11,7 @@ import numpy as np
 
 import vision as visions
 from dashboard.replay import MAX_REPLAY_STEPS
-from policies import scores_of
+from policies import Replay, scores_of
 from snake_env import SnakeEnv
 
 KEEP_GAMES = 16
@@ -23,8 +23,8 @@ class Game:
     def __init__(self, act, meta, seed):
         self.act, self.meta, self.seed = act, meta, seed
         self.width, self.height, self.vision = meta.get("width", 10), meta.get("height", 10), meta.get("vision", "short")
-        env = SnakeEnv(self.width, self.height, seed=seed, vision=self.vision)
-        state, done, self.actions, info = env.reset(), False, [], None
+        env = SnakeEnv(self.width, self.height, vision=self.vision)
+        state, done, self.actions, info = env.reset(seed=seed), False, [], None
         while not done and env.steps < MAX_REPLAY_STEPS:
             a = act(state)
             self.actions.append(a)
@@ -37,8 +37,8 @@ class Game:
     def seek(self, step):
         """The environment after `step` moves (0 = the start)."""
         if self.env is None or step < self.step:
-            self.env = SnakeEnv(self.width, self.height, seed=self.seed, vision=self.vision)
-            self.state, self.step = self.env.reset(), 0
+            self.env = SnakeEnv(self.width, self.height, vision=self.vision)
+            self.state, self.step = self.env.reset(seed=self.seed), 0
         while self.step < step:
             self.state, _, done, _ = self.env.step(self.actions[self.step])
             self.step += 1
@@ -50,7 +50,9 @@ class Game:
             env = self.seek(step)
             obs = np.asarray(self.state, dtype=np.float32)
             last = step == len(self.actions)
-            out = None if last else [round(float(v), 4) for v in scores_of(self.act)(obs)]
+            policy = self.act.__self__
+            raw = policy.scores(obs, step) if isinstance(policy, Replay) else scores_of(self.act)(obs)
+            out = None if last else [round(float(v), 4) for v in raw]
             return {"step": step, "moves": len(self.actions), "end": self.end if last else None,
                     "snake": [list(c) for c in env.snake], "food": list(env.food) if env.food is not None else None,
                     "direction": env.direction, "score": env.score,
@@ -84,4 +86,4 @@ def describe(meta, algorithm):
     """What the inspector panel needs once per game: input names or picture layout, and what the outputs mean."""
     w, h, v = meta.get("width", 10), meta.get("height", 10), meta.get("vision", "short")
     return {"vision": visions.to_string(v), "names": visions.input_names(v, w, h), "picture": visions.picture_info(v, w, h),
-            "outputs": "q" if algorithm == "dqn" else "scores", "width": w, "height": h}
+            "outputs": {"dqn": "q", "jev": "probs"}.get(algorithm, "scores"), "width": w, "height": h}

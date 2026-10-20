@@ -8,10 +8,16 @@ settings listed in `params` (each one is a --flag, e.g. mutation_rate -> --mutat
 To add an algorithm: write the trainer (copy train_dqn.py's structure: it must publish with
 publisher.Publisher and save models/<agent>_best.<ext>), then register(Algorithm(...)) below.
 """
+import jev
 
 
 def num(name, label, default, lo, hi, kind="float", help=""):
     return {"name": name, "label": label, "type": kind, "default": default, "min": lo, "max": hi, "help": help}
+
+
+def choice(name, label, default, options, help=""):
+    """A setting with named options ({value: label}), e.g. which network architecture to use."""
+    return {"name": name, "label": label, "type": "choice", "default": default, "options": options, "help": help}
 
 
 class Algorithm:
@@ -29,6 +35,9 @@ class Algorithm:
         out = {}
         for p in self.params:
             v = (params or {}).get(p["name"], p["default"])
+            if p["type"] == "choice":
+                out[p["name"]] = str(v) if str(v) in p["options"] else p["default"]
+                continue
             v = int(round(float(v))) if p["type"] == "int" else float(v)
             out[p["name"]] = min(max(v, p["min"]), p["max"])
         return out
@@ -81,8 +90,28 @@ register(Algorithm(
      num("eps_decay_steps", "Exploration decay (steps)", 100_000, 1, 10_000_000, "int"),
      num("target_sync", "Target sync (updates)", 500, 1, 100_000, "int"),
      num("envs", "Parallel games", 8, 1, 256, "int", "games stepped together in one process"),
-     num("eval_every", "Evaluate every (steps)", 20_000, 1_000, 10_000_000, "int")],
+     num("eval_every", "Evaluate every (steps)", 20_000, 1_000, 10_000_000, "int"),
+     choice("net", "Network", "mlp", {"mlp": "MLP (fully connected)", "conv": "CNN (convolutional)"},
+            "CNN reads the window / whole-board pictures as images; needs one of those visions")],
     {"flag": "threads", "label": "torch threads", "role": "threads"}, dqn_memory))
+
+
+def jev_memory(state_size, params, threads):
+    return 120  # it plays through an API: just the games in memory
+
+
+register(Algorithm(
+    "jev", "jev (TypeSafe decision model)",
+    "No training: a ready-made decision model reads what the snake senses, as text, and picks each move. It runs on "
+    "TokenRouter (needs TOKENROUTER_API_KEY) and costs money per move, about $0.03 for 20 games. Its run plays the "
+    "fixed test games directly; what you can tune is its instructions.",
+    "train_jev.py", "json",
+    [num("games", "Test games", 20, 1, 100, "int", "fixed test games it plays (the other algorithms are tested on 100)"),
+     choice("prompt", "Instructions", "rules", {name: p["label"] for name, p in jev.PROMPTS.items()},
+            "the prompt is jev's only 'training': try both"),
+     num("batch", "Boards per request", 100, 1, 100, "int", "games asked about in one request: more = faster and cheaper"),
+     num("max_cost", "Spending cap (USD)", 0.5, 0.01, 20.0, help="the run stops before spending more than this")],
+    {"flag": "threads", "label": "request threads", "role": "threads"}, jev_memory))
 
 
 def catalog():

@@ -48,8 +48,8 @@ export function mount(main, focusId, app) {
     const rev = data.review, open = data.ideas.filter((i) => OPEN.includes(i.status));
     const unreviewed = open.filter((i) => i.status === "new").length;
     const running = rev?.state === "running";
-    const button = h("button", { class: unreviewed ? "primary" : "", disabled: running || !open.length || !data.llm.configured,
-      title: data.llm.configured ? `Uses ${data.llm.model}` : "Add an API key to .env to enable reviews", onclick: startReview },
+    const button = h("button", { "data-write": true, class: unreviewed ? "primary" : "", disabled: running || !open.length || !data.llm.configured,
+      title: data.llm.configured ? `Uses ${data.llm.model} via ${data.llm.provider}` : "Add a TokenRouter or OpenRouter API key to .env to enable reviews", onclick: startReview },
       running ? "Reviewing…" : `Review ${open.length} open idea${open.length === 1 ? "" : "s"}`);
     const picker = data.reviews.length > 1 ? h("select", { "aria-label": "Earlier reviews", onchange: (e) => { view.review = e.target.value || null; load(); } },
       data.reviews.map((r, i) => h("option", { value: i ? r.name : "", selected: (view.review || data.reviews[0].name) === r.name },
@@ -106,7 +106,8 @@ export function mount(main, focusId, app) {
           h("span", { class: "muted small" }, i.id), h("h3", {}, i.title),
           h("span", { class: "chip" }, i.kind), h("span", { class: "chip" }, `${i.effort} effort`),
           i.status === "new" ? h("span", { class: "pill running" }, "new") : null,
-          h("select", { "aria-label": `Status of ${i.id}`, onchange: (e) => setStatus(i, e.target.value) },
+          h("span", { class: "chip ro-only" }, i.status),
+          h("select", { "data-write": true, "aria-label": `Status of ${i.id}`, onchange: (e) => setStatus(i, e.target.value) },
             data.statuses.map((s) => h("option", { value: s, selected: s === i.status }, s)))),
         i.what ? h("p", {}, i.what) : null,
         i.why ? h("p", { class: "small ink2" }, h("b", {}, "Why: "), i.why) : null,
