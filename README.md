@@ -1,5 +1,8 @@
 # snake-ai
 
+[![CI](https://github.com/markmysler/snake-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/markmysler/snake-ai/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A learning project and a small lab: neural networks learn to play Snake, and you can watch them do it. You decide what each snake **sees**, how it is **rewarded**, and which **algorithm** learns. Every run is saved with its exact recipe, so anyone can repeat it, change one thing, and compare.
 
 <p align="center"><img src="docs/img/boards.gif" alt="Three trained snakes playing side by side: a genetic algorithm and two DQN agents" width="720"></p>
@@ -44,6 +47,7 @@ Python 3.10+ on Windows, Linux or macOS. Continuous integration runs the tests o
 and 3.13, and in the Docker image.
 
 ```bash
+git clone https://github.com/markmysler/snake-ai.git && cd snake-ai
 # CPU-only PyTorch is much smaller than the default build and is all this project needs:
 pip install torch --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
 pip install -r requirements.txt
