@@ -91,17 +91,19 @@ export class Inspector {
 
   // The network's output for each move, as a share (softmax) with the raw value beside it.
   outputs(f) {
-    const q = f.info.outputs === "q";
-    const title = q ? "Q-values: expected future reward of each move" : "Network outputs: the highest one is the move";
+    const q = f.info.outputs === "q", probs = f.info.outputs === "probs";
+    const title = q ? "Q-values: expected future reward of each move" : probs ? "jev's probability for each move"
+      : "Network outputs: the highest one is the move";
     if (!f.out) return h("div", { class: "insp-block" }, h("h3", {}, title), h("p", { class: "muted small" }, "The game is over: no decision to show."));
     const share = softmax(f.out);
     return h("div", { class: "insp-block" }, h("h3", {}, title),
       h("div", { class: "prefs", role: "table", "aria-label": "Move preferences" }, MOVES.map((m, i) => h("div", { class: "pref" + (i === f.action ? " chosen" : ""), role: "row" },
         h("span", { role: "cell", class: "pref-name" }, m, i === f.action ? h("b", {}, " ← chosen") : null),
         h("span", { role: "cell", class: "pref-bar" }, h("i", { style: { width: `${Math.max(1, share[i] * 100)}%` } })),
-        h("span", { role: "cell", class: "pref-val" }, `${Math.round(share[i] * 100)}%`, h("small", {}, ` (${fmtNum(f.out[i], 2)})`))))),
-      h("p", { class: "small muted" }, "Bars are the softmax of the raw values in brackets: a rough measure of how sure it is. "
-        + (q ? "DQN picks the move with the highest Q-value." : "The GA's network picks its highest output.")));
+        h("span", { role: "cell", class: "pref-val" }, `${Math.round(share[i] * 100)}%`, probs ? null : h("small", {}, ` (${fmtNum(f.out[i], 2)})`))))),
+      h("p", { class: "small muted" }, probs ? "jev answers with a probability for each move and plays the one it picked; "
+        + "these are its own numbers, recorded when it played." : "Bars are the softmax of the raw values in brackets: a rough "
+        + "measure of how sure it is. " + (q ? "DQN picks the move with the highest Q-value." : "The GA's network picks its highest output.")));
   }
 
   // The numbers the network read: a named list for small visions, the pictures for window / full.

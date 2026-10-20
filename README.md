@@ -298,6 +298,8 @@ machine, and the course uses one setting for all its runs, so wall-clock compari
 2. **02 · Full vision:** more information isn't free. DQN learned just as well per step but ran 5× slower; the GA learned much worse.
 3. **10 · A CNN for the whole board:** per env step a small CNN learns as well as the MLP, but each step is several times
    slower, so in 10 minutes it loses (26.1 test apples with 4 threads, against 31.5 for the MLP with one).
+4. **11 · jev without practice:** with no training, TypeSafe's decision model scored 26.6 test apples on 5 games, about
+   what DQN reaches after 10 minutes on the same vision, for under 2 cents.
 
 How to run your own experiment:
 1. **New run** → pick or create a lesson, and write your **prediction** first.

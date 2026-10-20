@@ -85,7 +85,7 @@ export function mount(main, runId, app) {
         h("div", { class: "sub" },
           ev ? h("span", {}, "median ", h("b", {}, fmtNum(ev.median, 1)), " · max ", h("b", {}, ev.max)) : null,
           last ? h("span", {}, "best game ", h("b", {}, last[3])) : null,
-          last ? h("span", {}, `${live?.iteration_label || (a.algorithm === "ga" ? "generation" : "episode")} `,
+          last ? h("span", {}, `${live?.iteration_label || { ga: "generation", jev: "move" }[a.algorithm] || "episode"} `,
             h("b", {}, fmtCompact(last[6]))) : null,
           last ? h("span", {}, h("b", {}, fmtCompact(last[5])), " steps/s") : null),
         ev?.outcomes ? h("div", { class: "sub" }, h("span", {}, "test games: ", h("b", {}, fmtNum(ev.mean_steps, 0)), " moves each · ",

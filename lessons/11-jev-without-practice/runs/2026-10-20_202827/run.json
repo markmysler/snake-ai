@@ -1,0 +1,105 @@
+{
+  "lesson": "11-jev-without-practice",
+  "run_id": "2026-10-20_202827",
+  "name": "jev \u00b7 short \u00b7 stay safe",
+  "note": "jev plays 5 of the fixed test games with no practice.",
+  "status": "finished",
+  "created": "2026-10-20 20:28:27",
+  "parallel": 2,
+  "config": {
+    "lesson": "11-jev-without-practice",
+    "name": "jev \u00b7 short \u00b7 stay safe",
+    "note": "jev plays 5 of the fixed test games with no practice.",
+    "vision": {
+      "type": "short"
+    },
+    "reward": {
+      "apple": 10.0,
+      "death": 10.0
+    },
+    "agents": [
+      {
+        "id": "jev",
+        "algorithm": "jev",
+        "params": {
+          "games": 5,
+          "prompt": "careful",
+          "batch": 100,
+          "max_cost": 0.25
+        }
+      }
+    ],
+    "time_budget_min": 0.0,
+    "width": 10,
+    "height": 10,
+    "seed": 0
+  },
+  "started": "2026-10-20 20:28:27",
+  "plan": {
+    "parallel": 2,
+    "cores_per_run": 11,
+    "agents": {
+      "jev": {
+        "algorithm": "jev",
+        "cores": 1,
+        "flag": "threads",
+        "params": {
+          "games": 5,
+          "prompt": "careful",
+          "batch": 100,
+          "max_cost": 0.25
+        }
+      }
+    }
+  },
+  "machine": {
+    "cpus": 22,
+    "on_battery": false
+  },
+  "finished": "2026-10-20 20:48:26",
+  "final": {
+    "jev": {
+      "iteration_label": "move",
+      "iteration": 1356,
+      "total_steps": 1356,
+      "total_games": 5,
+      "elapsed_s": 1198.18,
+      "best_score": 30,
+      "mean_score_100": 26.6
+    }
+  },
+  "evaluation": {
+    "jev": {
+      "games": 5,
+      "mean": 26.6,
+      "median": 28.0,
+      "max": 30,
+      "mean_steps": 271.2,
+      "median_steps": 272.0,
+      "steps_per_apple": 10.19548872180451,
+      "outcomes": {
+        "wall": 0,
+        "body": 5,
+        "starved": 0,
+        "won": 0
+      },
+      "per_game": {
+        "score": [
+          28,
+          28,
+          30,
+          23,
+          24
+        ],
+        "steps": [
+          258,
+          265,
+          272,
+          276,
+          285
+        ],
+        "end": "bbbbb"
+      }
+    }
+  }
+}
