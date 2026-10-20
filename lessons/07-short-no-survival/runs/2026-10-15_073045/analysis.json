@@ -1,0 +1,238 @@
+{
+  "state": "done",
+  "model": "claude-haiku-5-5",
+  "created": "2026-10-15 07:34:29",
+  "seconds": 30.4,
+  "usage": {
+    "model": "claude-haiku-5-5",
+    "prompt_tokens": 15820,
+    "completion_tokens": 6000
+  },
+  "result": {
+    "headline": "Removing the survival reward stopped the GA from looping: starved games fell from 22 to 0 of 100 and the GA test mean rose from 37.7 to 43.5 (one seed).",
+    "summary": "**GA (neuroevolution, a population of small networks improved by selection and mutation):** test mean 43.49 (median 40, max 87), 1,197 steps per game, 28 steps per apple. Test games ended by body collision 91, wall 9, starved 0. Compared with the survival-reward run it replaces (short-viz-2: 37.72 mean, 49 steps per apple, 22 starved), the snake now wastes far fewer steps. Its training curve was flat near 0 for the first 0.3 minutes, then rose to about 21 by minute 0.85. It then stayed noisy between 20 and 31 (mean of last 100 games 31.45), with no clear plateau at 3 minutes.\n\n**DQN (Deep Q-learning, which learns the value of each move from stored experience):** test mean 20.86 (median 21, max 35), 170 steps per game, 8 steps per apple. Test games ended by body collision 83, wall 17. Its training curve climbed quickly to about 15 by minute 1.1 (110,776 env steps), then stayed flat around 14-16 for the rest of the run. Only 262,816 env steps were taken in 3 minutes, against 66 million for the GA. Its test score is higher than its training mean (14.58) because training still includes random exploration moves.",
+    "diagnosis": "The survival reward paid the GA for staying alive, so looping on the spot was a profitable strategy: 22 of 100 test games ended by starvation, with 49 steps per apple. Removing it removed that payoff. Starvation dropped to zero and steps per apple dropped to 28, both as predicted. The GA now takes more risks, so body crashes rose from 63 to 91 of 100 games. That is the trade-off: once staying alive earns nothing, the snake hits its own body sooner. The short vision only sees one square ahead, so it cannot tell that a turn will trap it. That explains the high body-crash share for both agents.\n\nThe GA gain of about 6 points rests on one seed. The spread between seeds is unknown, so treat the 37.7 to 43.5 change as a hint, not a result. DQN barely moved (19.4 to 20.9, a 1.4 point change), which fits the idea that a small per-move survival reward mattered mostly to the GA's fitness measure. Its high speed per step is typical of a gradient learner that learns from every move. The GA's advantage here comes mostly from the 11 CPU cores it was given (DQN had 1), not from better learning per step.",
+    "learned": "A reward that pays for surviving can teach an agent to stall; here, removing it cut starvation from 22% to 0% and raised the score a little. Judge a change by the test score over several seeds, and compare algorithms by score per env step and per unit of compute, not by a single wall-clock run.",
+    "prediction_check": "The prediction held on all three numbers: starved games fell to 0 (under 5 was predicted), steps per apple fell to 28 (25 to 35 was predicted), and the GA test mean was 43.49 (36 to 44 was predicted, at the top of the range)."
+  },
+  "recommendations": [
+    {
+      "title": "Repeat this run with seed 1",
+      "why": "The GA gain of about 6 points comes from one seed. Repeating the same recipe with another seed tests whether the effect is real or noise.",
+      "change": "Change only the seed from 0 to 1; keep the reward without survival and the 3-minute budget.",
+      "prediction": "GA test mean stays between 36 and 44, and starved games stay under 5 of 100.",
+      "question": "Does removing survival reliably help the GA, or was the 37.7 to 43.5 gap seed luck?",
+      "new_lesson": false,
+      "lesson_slug": "07-short-no-survival",
+      "recipe": {
+        "seed": 1
+      },
+      "config": {
+        "lesson": "07-short-no-survival",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "short"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "starve": 10.0,
+          "win": 100.0,
+          "potential": 0.1
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 3.0,
+        "width": 10,
+        "height": 10,
+        "seed": 1
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "seed 0 \u2192 1"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Try rays vision without survival",
+      "why": "Short vision is blind beyond one square, and 83 to 91 of 100 test games end in body collisions. A longer view may let the snake see its body coming.",
+      "change": "Switch the vision from short to rays with depth 4; keep the same reward without survival.",
+      "prediction": "Body-collision share falls below 75 percent of test games, and the DQN test mean rises by at least 3 points (to about 24 or more).",
+      "question": "Does a longer view reduce body crashes once looping is no longer rewarded?",
+      "new_lesson": true,
+      "lesson_slug": "rays-no-survival",
+      "recipe": {
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        }
+      },
+      "config": {
+        "lesson": "07-short-no-survival",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "starve": 10.0,
+          "win": 100.0,
+          "potential": 0.1
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 3.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "vision short \u2192 rays:depth=4"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Give the GA a 10-minute budget",
+      "why": "The GA training curve was still noisy and rising at 3 minutes. The 10-minute survival-reward baseline reached 51.55, so more time may help it keep improving.",
+      "change": "Raise the time budget from 3 to 10 minutes; keep the same short vision and reward.",
+      "prediction": "GA test mean rises to about 50 or more, and the training curve shows a plateau.",
+      "question": "How much of the GA's score comes from extra training time versus the reward change?",
+      "new_lesson": true,
+      "lesson_slug": "ga-longer-budget",
+      "recipe": {
+        "time_budget_min": 10.0
+      },
+      "config": {
+        "lesson": "07-short-no-survival",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "short"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "starve": 10.0,
+          "win": 100.0,
+          "potential": 0.1
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "training time (min) 3 \u2192 10"
+      ],
+      "launched": []
+    }
+  ],
+  "recommended": 0,
+  "ideas": [
+    {
+      "id": "idea-13",
+      "title": "Score per CPU core-minute in comparisons",
+      "kind": "evaluation",
+      "what": "Add a comparison view that shows test score divided by the CPU cores each agent used and the minutes it ran, next to the existing score per env step.",
+      "why": "The GA ran on 11 cores while DQN ran on 1, so a same-wall-clock comparison favours the GA. Its 66 million env steps against DQN's 0.26 million mostly reflect hardware, not learning quality.",
+      "expected": "Lets learners see whether DQN's per-step efficiency (score 15 after 110k steps) beats the GA on a fair compute basis, which the current table cannot show.",
+      "effort": "medium",
+      "status": "new",
+      "created": "2026-10-15 07:34:29",
+      "source": {
+        "run": "07-short-no-survival/2026-10-15_073045",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    }
+  ]
+}

@@ -1,0 +1,264 @@
+{
+  "state": "done",
+  "model": "claude-haiku-5-5",
+  "created": "2026-10-15 07:30:20",
+  "seconds": 39.2,
+  "usage": {
+    "model": "claude-haiku-5-5",
+    "prompt_tokens": 14757,
+    "completion_tokens": 7807
+  },
+  "result": {
+    "headline": "The GA with short vision reached a test mean of 37.72 versus DQN's 19.44, but after only 3 minutes on one seed this gap is a first reading, not a settled result.",
+    "summary": "**GA (neuroevolution, a population of small networks that breed and mutate):** test mean 37.72 (median 39, best 54) over 100 fixed-seed games, with 1,844 steps per game and 49 steps per apple. Of the 100 test games, 63 ended in a body collision, 15 in a wall crash and 22 by starving (looping without eating). Its training mean rose from about 0 in the first 30 seconds to 28.99 at 3 minutes, and it was still climbing at the end (best game 74). It ran about 74 million environment steps at roughly 420k steps per second on 11 cores.\n\n**DQN (Q-learning with a neural network that predicts the value of each move):** test mean 19.44 (median 18, best 39), with 156 steps per game and 8 steps per apple. Of its 100 test games, 88 ended in a body collision, 12 in a wall crash and none by starving. Its training mean (15.57 over the last 100 games) rose quickly to about 13 by 0.8 minutes and then stayed flat at 15-16 for the last two minutes. Its best game has been 40 since 1.9 minutes. It ran only about 313k environment steps, at roughly 1.5-2k steps per second on a single core.\n\nAs a sample-efficiency check (score per environment step), DQN is far ahead: it reached a training mean of about 13 after roughly 105k steps, while the GA needed about 27 million steps to reach 11. The GA wins on wall-clock time only because it has 11 cores and DQN has one.",
+    "diagnosis": "The GA's score is probably helped by the survival reward (+0.1 per move). A 1,844-step game earns about 184 from survival, which is larger than its apple reward (about 38 apples x 10 = 380, so survival is roughly a third of the fitness). Staying alive therefore pays a lot, and this likely explains the 22 starved games: a looping snake collects survival reward, and the starve penalty of 10 is smaller than the survival reward gathered over about 100 x length moves. The GA is learning to survive longer rather than to eat efficiently, which shows up as 49 steps per apple against DQN's 8.\n\nDQN's flat curve and its 88% body-collision share point to a limit in the input, not in training time alone. The short vision sees only the neighbouring square, so the snake cannot see its own tail coming and traps itself. The curve reached its plateau at about 105k steps, after exploration had finished decaying (eps_decay_steps = 100k), so exploration is not the main cause of the flat curve. The 3-minute budget is short for a single core at about 2k steps per second, so DQN may also simply need more time. Both explanations are plausible from one seed, and the next runs should separate them.\n\nComparability caveat: this run uses one shared reward set and a 3-minute budget. The baseline lessons used 10 minutes and per-agent rewards, and the rays runs used 5 or 10 minutes. Compare the GA and DQN only against runs with the same reward and budget, and treat differences of a few points as noise on a single seed.",
+    "learned": "Score per environment step and score per second answer different questions: DQN learned far more per step, while the GA gained more per second because it was spread over 11 cores. A high test mean can hide bad habits, so always check how games ended (here 22 starved games and 49 steps per apple for the GA).",
+    "prediction_check": null
+  },
+  "recommendations": [
+    {
+      "title": "Remove the survival reward",
+      "why": "If survival pays for wandering, removing it should cut the GA's looping and steps per apple. Lesson 03 tested this with rays vision, and this run repeats the question with short vision.",
+      "change": "Remove the survival reward and keep the other reward features as they are.",
+      "prediction": "GA starved games fall from 22 to under 5 out of 100, GA steps per apple fall from 49 to about 25-35, and the GA test mean stays at 36-44.",
+      "question": "Does the survival reward make the GA loop when the vision is short?",
+      "new_lesson": true,
+      "lesson_slug": "short-no-survival",
+      "recipe": {
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "starve": 10.0,
+          "win": 100.0,
+          "potential": 0.1
+        }
+      },
+      "config": {
+        "lesson": "07-short-no-survival",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "short"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "starve": 10.0,
+          "win": 100.0,
+          "potential": 0.1
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 3.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "reward: \u2212 survival"
+      ],
+      "launched": [
+        "07-short-no-survival/2026-10-15_073045"
+      ]
+    },
+    {
+      "title": "Give DQN rays vision instead",
+      "why": "DQN dies in its own body in 88% of games with a one-square view. A view that reaches four squares along eight lines should let it see the tail coming and avoid trapping itself.",
+      "change": "Switch the vision from short to rays with depth 4, and keep the reward and budget.",
+      "prediction": "DQN test mean rises from 19.4 to about 24-28, and its body-collision share falls below 75%.",
+      "question": "Is DQN's plateau caused by the short vision's blindness?",
+      "new_lesson": true,
+      "lesson_slug": "rays-vs-short-3min",
+      "recipe": {
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        }
+      },
+      "config": {
+        "lesson": "07-short-no-survival",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "starve": 10.0,
+          "win": 100.0,
+          "potential": 0.1,
+          "survival": 0.1
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 3.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "vision short \u2192 rays:depth=4"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Double the training time to 10 minutes",
+      "why": "The GA's training mean was still rising at 3 minutes (18.4 to 21.0 to 29.0 over the last 1.5 minutes), while DQN had flattened. Giving the same setup more time shows whether the GA's gap comes from its speed.",
+      "change": "Increase the time budget to 10 minutes and keep everything else the same.",
+      "prediction": "GA test mean rises to 45-55 and its training curve is still climbing at 10 minutes. DQN stays at 18-24.",
+      "question": "How much more does each algorithm gain from the same setup with more time?",
+      "new_lesson": false,
+      "lesson_slug": "07-short-no-survival",
+      "recipe": {
+        "time_budget_min": 10.0
+      },
+      "config": {
+        "lesson": "07-short-no-survival",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "short"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "starve": 10.0,
+          "win": 100.0,
+          "potential": 0.1,
+          "survival": 0.1
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "training time (min) 3 \u2192 10"
+      ],
+      "launched": []
+    }
+  ],
+  "recommended": 0,
+  "ideas": [
+    {
+      "id": "idea-11",
+      "title": "Show how game endings change over training",
+      "kind": "dashboard",
+      "what": "Plot the share of wall, body, starved and won games at each training checkpoint, not only at the final test.",
+      "why": "The GA's 22 starved games are visible only in the final test table. The curves do not show when looping began or whether it is growing.",
+      "expected": "Lets the learner see whether the starved share rises during training, for example from 0% to 22%, and link it to the reward changes.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-15 07:30:20",
+      "source": {
+        "run": "07-short-no-survival/2026-10-15_072628",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-12",
+      "title": "Add a reachable-space vision feature",
+      "kind": "vision",
+      "what": "Add an input that reports how many empty squares the snake could still reach from its head, using a flood fill that stops at walls and body.",
+      "why": "DQN with short vision dies in its own body in 88% of test games, and it plateaus at about 15-16 in training. The catalog's visions do not show the snake how much room it has left.",
+      "expected": "Reduces DQN's body-collision share below 60% and lifts its test mean by 5 or more points at 3 minutes, if the room count is what limits it.",
+      "effort": "medium",
+      "status": "new",
+      "created": "2026-10-15 07:30:20",
+      "source": {
+        "run": "07-short-no-survival/2026-10-15_072628",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    }
+  ]
+}

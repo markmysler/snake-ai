@@ -1,0 +1,266 @@
+{
+  "state": "done",
+  "model": "claude-haiku-5-5",
+  "created": "2026-10-15 07:24:44",
+  "seconds": 26.4,
+  "usage": {
+    "model": "claude-haiku-5-5",
+    "prompt_tokens": 14229,
+    "completion_tokens": 5176
+  },
+  "result": {
+    "headline": "Raising DQN's gamma from 0.95 to 0.99 lifted its test mean from 24.9 to 28.77 and roughly halved its body-crash share (56% to 29% of games), but this is one seed, and DQN still trails the GA's 32.83.",
+    "summary": "**GA (population 200, same as run 05):** test mean 32.83, median 33, max 38. It took 482 steps per game and 15 steps per apple. Its games ended at walls 36 times and bodies 64 times, with no starvation. Its test numbers match run 05 exactly, and its training curve climbed from about 0.4 mean (last 100 games) at 0.4 minutes to 27.3 at 5 minutes, with 63 million env steps. Because the GA runs in its own process and this run changed only DQN, identical test numbers are worth checking: it may mean the GA is deterministic under this seed, or that its result was reused.\n\n**DQN (gamma 0.99):** test mean 28.77, median 29, max 42. It took 284 steps per game and 10 steps per apple (up from 9 in run 05). Its games ended at walls 71 times and bodies 29 times, with no starvation or wins. Its training curve rose quickly to about 20 by 1.4 minutes, then flattened between 19 and 23 for the rest of the run. Only 437k env steps were taken, against 63M for the GA. Its training mean (21.26) is lower than its test mean because exploration (random moves) is still counted during training.\n\n**Sample efficiency vs speed:** DQN reached a test score of 28.8 with about 0.4M env steps, while the GA needed about 63M steps to reach 32.8. The GA is faster per wall-clock minute (about 196k steps/s across 11 cores, against roughly 1.2k to 1.7k steps/s for DQN on one core), which is why it covered so much more ground in the same five minutes.",
+    "diagnosis": "The prediction was partly ill-defined. Body plus wall is always 100% of test games here (no starvation or wins), so the total crash rate cannot change. What did change is the mix: the body share fell from 56% to 29% and the wall share rose from 44% to 71%. That fits the lesson's idea that a longer horizon (gamma 0.99 values rewards about 100 moves ahead, against about 20 for gamma 0.95) lets the 30-point death penalty shape choices earlier, so the snake avoids boxing itself in. The mean rose by 3.9 points, which meets the predicted \"2 or more points\" with the direction now known to be up. The steps-per-apple rise (9 to 10) matches the prediction too.\n\nThe caveat is that this is one seed. The test score comes from 100 fixed games, so it is not too noisy, but training variance between seeds is usually larger than that. The seed group is empty, so there is no spread to judge the 3.9-point gain against. Treat it as a promising signal, not a settled result. Also, the DQN training curve flattened after about 1.5 minutes, so the remaining gap to the GA may be less about training time and more about how DQN learns from its 437k steps.",
+    "learned": "A bigger gamma lets DQN account for crashes further in the future. In this run that shifted deaths away from self-collisions and raised the test mean, but with one seed the size of that gain is still uncertain. DQN is far more sample-efficient than the GA, while the GA covers many more steps per minute.",
+    "prediction_check": "Mostly held: the test mean moved up by 3.9 points (the predicted 2+), and steps per apple rose from 9 to 10; the body-plus-wall crash rate cannot change because it is always 100%, though the body share did fall from 56% to 29%."
+  },
+  "recommendations": [
+    {
+      "title": "Repeat gamma 0.99 with seed 1",
+      "why": "A single seed cannot tell a real gain from luck. If the DQN test mean stays near 28 to 29 on a new seed, the horizon effect is probably real.",
+      "change": "Change the seed from 0 to 1; keep all other settings, including gamma 0.99.",
+      "prediction": "DQN test mean between 26 and 31, with body-crash share below 45% of test games.",
+      "question": "Does the gamma 0.99 gain (24.9 to 28.8) hold on a different seed?",
+      "new_lesson": false,
+      "lesson_slug": "06-long-horizon-dqn",
+      "recipe": {
+        "seed": 1
+      },
+      "config": {
+        "lesson": "06-long-horizon-dqn",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 30.0,
+          "starve": 10.0,
+          "potential": 0.1,
+          "hunger": 0.01
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.99,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 5.0,
+        "width": 10,
+        "height": 10,
+        "seed": 1
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "seed 0 \u2192 1"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Push gamma to 0.999",
+      "why": "If a longer horizon helped from 0.95 to 0.99, the death penalty may keep improving the snake's long-range choices at 0.999, but the gain could also reverse if the value estimates become too noisy to learn from.",
+      "change": "Set DQN's gamma to 0.999; keep the GA and everything else the same.",
+      "prediction": "DQN test mean between 26 and 32, with body-crash share below 29% (the run 06 value).",
+      "question": "Is there a point beyond 0.99 where a longer horizon stops helping DQN?",
+      "new_lesson": true,
+      "lesson_slug": "gamma-horizon-sweep",
+      "recipe": {
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {}
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "gamma": 0.999
+            }
+          }
+        ]
+      },
+      "config": {
+        "lesson": "06-long-horizon-dqn",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 30.0,
+          "starve": 10.0,
+          "potential": 0.1,
+          "hunger": 0.01
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.999,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 5.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "dqn gamma 0.99 \u2192 0.999"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Give DQN ten minutes instead of five",
+      "why": "DQN's training mean flattened near 20 after about 1.5 minutes, so it may be a plateau of the learner or simply a slow climb that needs more steps. A longer budget separates the two.",
+      "change": "Raise the time budget from 5 to 10 minutes; keep gamma 0.99 and everything else the same.",
+      "prediction": "DQN test mean rises by less than 3 points (to about 29 to 32) and its steps per apple stays near 10.",
+      "question": "Is DQN still improving at five minutes, or has it levelled off at this network and reward setting?",
+      "new_lesson": false,
+      "lesson_slug": "06-long-horizon-dqn",
+      "recipe": {
+        "time_budget_min": 10.0
+      },
+      "config": {
+        "lesson": "06-long-horizon-dqn",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 30.0,
+          "starve": 10.0,
+          "potential": 0.1,
+          "hunger": 0.01
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.99,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "training time (min) 5 \u2192 10"
+      ],
+      "launched": []
+    }
+  ],
+  "recommended": 0,
+  "ideas": [
+    {
+      "id": "idea-9",
+      "title": "Run several seeds and show spread",
+      "kind": "evaluation",
+      "what": "Add a button that trains the same recipe with three or four seeds and reports the test mean with its range (or standard error) on the dashboard and in the lesson table.",
+      "why": "This run's key result (DQN up 3.9 points) rests on a single seed, and the lab currently has no way to measure seed-to-seed spread without launching each seed by hand.",
+      "expected": "Each comparison would come with an error bar, so learners could tell differences larger than seed noise from smaller ones, instead of guessing.",
+      "effort": "medium",
+      "status": "new",
+      "created": "2026-10-15 07:24:44",
+      "source": {
+        "run": "06-long-horizon-dqn/2026-10-15_071903",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-10",
+      "title": "Show crash mix over training",
+      "kind": "dashboard",
+      "what": "Plot the share of wall, body, starved and won endings in each evaluation, rather than only in the final test table.",
+      "why": "The gamma change moved the crash mix (body 56% to 29%, wall 44% to 71%) while the test mean moved less. The current view shows only the end state, so learners cannot see when the shift happened.",
+      "expected": "Learners could see whether the crash mix shifts early in training or only late, which would help explain how the horizon works.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-15 07:24:44",
+      "source": {
+        "run": "06-long-horizon-dqn/2026-10-15_071903",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    }
+  ]
+}

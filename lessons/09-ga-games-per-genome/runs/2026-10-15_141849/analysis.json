@@ -1,0 +1,230 @@
+{
+  "state": "done",
+  "model": "claude-haiku-5-5",
+  "created": "2026-10-15 14:24:34",
+  "seconds": 31.9,
+  "usage": {
+    "model": "claude-haiku-5-5",
+    "prompt_tokens": 17097,
+    "completion_tokens": 5582
+  },
+  "result": {
+    "headline": "The room-vision GA reached a test mean of 14.19 apples' worth of score (median 3), and 66 of its 100 test games ended by starving in a loop rather than crashing.",
+    "summary": "The GA (a genetic algorithm: a population of small networks is scored, the best are kept and mutated into the next generation) trained for 5 minutes and 118 generations, with 25.7 million environment steps. Its best saved model scored a test mean of 14.19 and a median of 3, so most games ended after about 3 apples while a few reached 62. The test games ended as 66 starved, 34 body crashes and 0 wall crashes. It took 652 steps per game and 46 steps per apple, so the snake spent a long time wandering. The learning curve rose to a training mean of 16.6 (last 100 games) at 3.15 minutes, then fell to 8.42 at the end, even though the single best game kept climbing to 61. That split suggests the population got more variable while its typical game got worse. Steps per second fell from about 170k to about 55k after 2.2 minutes, which is probably the laptop running on battery (on_battery is true), so the GA got less compute late in the run. There is no DQN in this run, and it is a single seed, so small differences are not meaningful.",
+    "diagnosis": "The starvation share is the clearest signal. Starvation means the snake loops for 100 times its length without eating, so the agent learned to survive without finishing apples. This run's reward adds a hunger penalty of -0.01 per move. Compared with the 10-minute scratch run that had the same reward but no hunger term, the test mean fell from 36.27 to 14.19, starvation went from 0 to 66, and steps per apple went from 28 to 46. The hunger term is the most likely cause, because it changes the scoring of long-lived games, but the two runs also differ in training time (5 versus 10 minutes), so the time budget could be part of the gap. The falling training mean after minute 3 points to noisy fitness: with only 3 games per genome, one lucky or unlucky game can decide who survives, and the population can drift into looping strategies. The speed drop on battery also shortened the late training.",
+    "learned": "A reward that pays for surviving or moving can teach a snake to wander without eating, so always check how games end (starved versus crashed) and steps per apple, not only the mean score. Also, a curve that peaks and then falls may mean the fitness estimate is too noisy, and one run is one seed, so the gap between this run and the 10-minute run may be partly the time budget.",
+    "prediction_check": null
+  },
+  "recommendations": [
+    {
+      "title": "Remove the hunger penalty",
+      "why": "If the per-move hunger cost is pushing the GA toward slow loops, removing it should cut starvation and raise the test mean. The 10-minute scratch run with the same reward minus hunger had 0 starved games.",
+      "change": "Remove the hunger reward feature and keep everything else, including the 5-minute budget.",
+      "prediction": "Starved games fall from 66 to under 20 out of 100, steps per apple fall from 46 to about 25-35, and the test mean rises to 25-35.",
+      "question": "Is the per-move hunger penalty what makes this snake wander and starve?",
+      "new_lesson": true,
+      "lesson_slug": "hunger-penalty-starvation",
+      "recipe": {
+        "reward": {
+          "apple": 10.0,
+          "death_wall": 10.0,
+          "death_body": 10.0,
+          "starve": 10.0,
+          "win": 100.0,
+          "potential": 0.1
+        }
+      },
+      "config": {
+        "lesson": "09-ga-games-per-genome",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "room"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death_wall": 10.0,
+          "death_body": 10.0,
+          "starve": 10.0,
+          "win": 100.0,
+          "potential": 0.1
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          }
+        ],
+        "time_budget_min": 5.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "reward: \u2212 hunger"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Double the training time to 10 minutes",
+      "why": "This run compared against a 10-minute run with a different reward, and the curve was still moving at the end. Checking whether more time alone fixes the late decline separates the time effect from the reward effect.",
+      "change": "Raise the time budget from 5 to 10 minutes and keep the reward and vision the same.",
+      "prediction": "The test mean rises to 20-30 and the training mean no longer falls after minute 3, but starvation stays above 30 out of 100 if the hunger penalty is the real cause.",
+      "question": "Does the falling late curve and the starvation come from too little training time, or from the reward itself?",
+      "new_lesson": true,
+      "lesson_slug": "time-budget-room-ga",
+      "recipe": {
+        "time_budget_min": 10.0
+      },
+      "config": {
+        "lesson": "09-ga-games-per-genome",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "room"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death_wall": 10.0,
+          "death_body": 10.0,
+          "starve": 10.0,
+          "win": 100.0,
+          "potential": 0.1,
+          "hunger": 0.01
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "training time (min) 5 \u2192 10"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Evaluate each genome on 10 games",
+      "why": "The curve peaks and then falls while the best single game keeps rising, which fits a noisy fitness estimate from only 3 games per genome. More games should make selection steadier.",
+      "change": "Raise the GA's games per genome from 3 to 10 and keep the 5-minute budget.",
+      "prediction": "Each generation takes about three times as long, so there are around 35-40 generations. The training mean keeps rising to 15 or more at the end instead of falling, and the test mean reaches 18-28.",
+      "question": "Is the late decline caused by noisy fitness from too few games per genome?",
+      "new_lesson": true,
+      "lesson_slug": "ga-games-per-genome",
+      "recipe": {
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "games": 10
+            }
+          }
+        ]
+      },
+      "config": {
+        "lesson": "09-ga-games-per-genome",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "room"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death_wall": 10.0,
+          "death_body": 10.0,
+          "starve": 10.0,
+          "win": 100.0,
+          "potential": 0.1,
+          "hunger": 0.01
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 10,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          }
+        ],
+        "time_budget_min": 5.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "ga games 3 \u2192 10"
+      ],
+      "launched": [
+        "09-ga-games-per-genome/2026-10-15_142501"
+      ]
+    }
+  ],
+  "recommended": 0,
+  "ideas": [
+    {
+      "id": "idea-17",
+      "title": "Growing penalty for long gaps without eating",
+      "kind": "reward",
+      "what": "A reward feature that subtracts a small amount each move, increasing with the number of moves since the last apple, so loops become more costly the longer they last. It would replace the flat per-move hunger cost with one that targets wandering specifically.",
+      "why": "66 of 100 test games starved after 652 steps with 46 steps per apple, and the existing hunger term is flat, so it does not single out long loops.",
+      "expected": "Starved games fall below 20 out of 100 and steps per apple fall below 30, while the test mean stays at or above the level without hunger.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-15 14:24:34",
+      "source": {
+        "run": "09-ga-games-per-genome/2026-10-15_141849",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-18",
+      "title": "Flag CPU throttling on the training curve",
+      "kind": "dashboard",
+      "what": "Mark the points on the curve where the machine is on battery or throttling, and show steps per second next to generations so a slowdown is not read as a learning change.",
+      "why": "Steps per second fell from about 170k to about 55k after 2.2 minutes while the machine was on battery, and the training mean changed at the same time.",
+      "expected": "Learners can tell a compute drop from a learning plateau, so they will not misread late-run curves.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-15 14:24:34",
+      "source": {
+        "run": "09-ga-games-per-genome/2026-10-15_141849",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "state": "done",
+  "name": "2026-10-15_074740",
+  "model": "claude-haiku-5-5",
+  "created": "2026-10-15 07:47:40",
+  "seconds": 22.4,
+  "usage": {
+    "model": "claude-haiku-5-5",
+    "prompt_tokens": 8704,
+    "completion_tokens": 4205
+  },
+  "ideas_reviewed": 11,
+  "result": {
+    "summary": "Most open ideas point at one gap: every comparison in the lab rests on a single seed and a single wall-clock race, so learners cannot tell noise from effect or hardware from learning quality. The single most valuable next step is multi-seed runs that report spread, since nearly every lesson's conclusion depends on it. Two small additions, a split body/wall death penalty and a crash-mix-over-time plot, are cheap and teach directly from existing evidence. The reachable-space vision targets the most consistent failure seen (body crashes in 69-88% of DQN games).",
+    "build_next": [
+      {
+        "title": "Split death penalty into body and wall crashes",
+        "kind": "reward",
+        "ideas": [
+          "idea-8"
+        ],
+        "what": "Add two reward features, death_body and death_wall, so each crash type gets its own penalty. Keep the shared death feature as a combined option that is incompatible with the split pair.",
+        "why": "Run 05 showed one penalty trades one failure for another: raising it cut body crashes from 69% to 56% but raised wall crashes from 31% to 44%. Splitting the penalty is the direct fix, and the change is small.",
+        "how": "Add two entries to the reward feature list in rewards.py, each applying its penalty only when the matching crash type occurs. Mark them incompatible with death. Add a preset such as 'split_death' so the dashboard lists it. The dashboard picks up the new options automatically.",
+        "effort": "small",
+        "first_experiment": "Rays vision, DQN and GA, with death_body 30 and death_wall 10 (other settings as in run 05). Check whether the body share falls below 50% while the wall share stays near 31%."
+      },
+      {
+        "title": "Crash-mix and ending shares over training",
+        "kind": "dashboard",
+        "ideas": [
+          "idea-10",
+          "idea-11"
+        ],
+        "what": "Record the share of wall, body, starved and won endings at each evaluation checkpoint, and plot them as stacked lines over training time in the run view.",
+        "why": "The final table hides when the crash mix shifted (run 06: body 56% to 29%, wall 44% to 71% with gamma change) and when the GA's looping began (22 starved games in run 'short-viz-2' and the full-view run). The end state alone cannot explain these changes.",
+        "how": "The evaluation step already runs at intervals (eval_every for DQN, per-generation for GA). Have it store the ending counts per checkpoint in the run log, then add a stacked-area chart to the dashboard reading that log. Nothing in the reward or vision code changes.",
+        "effort": "small",
+        "first_experiment": "Re-run 06-long-horizon-dqn with the chart enabled and look for the step where the body share starts to drop, to see whether the gamma effect is gradual or sudden."
+      },
+      {
+        "title": "Multi-seed runs with spread on the results table",
+        "kind": "evaluation",
+        "ideas": [
+          "idea-5",
+          "idea-9"
+        ],
+        "what": "Add a seeds setting (default 3) that trains one recipe with several seeds and reports the test mean with min, max or standard deviation in the results table and the lesson summary.",
+        "why": "The GA-DQN gap (about 4 points) and the DQN improvement in run 06 (3.9 points) are both one-seed results. Training curves wobble 4-5 points between checkpoints, so single-seed gaps are not reliable. Several runs cannot yet be told apart from noise.",
+        "how": "Add a seeds parameter to the trainer scripts that loops over seeds (or launches them in parallel) and writes one results record per seed. Aggregate in the results module, then show mean and spread in the table. Mention in the help text that cost scales with seeds, and keep the default low.",
+        "effort": "medium",
+        "first_experiment": "Run the baseline 01-short-vision recipe with 4 seeds for GA and DQN. Compare the spread with the 4-point gap seen before, and decide whether that gap is real."
+      },
+      {
+        "title": "Reachable-space (flood-fill) vision",
+        "kind": "vision",
+        "ideas": [
+          "idea-7",
+          "idea-12"
+        ],
+        "what": "Add a vision that reports how many empty squares the snake can reach from its head, using a flood fill blocked by walls and body. Optionally give the count for the left, straight and right moves.",
+        "why": "DQN dies from its own body in 69-76% of games with window and rays, and in 88% with short vision. Neither vision reports how much room remains as the snake grows, which is the cause that flood fill addresses. This is the most consistent failure across runs.",
+        "how": "Register a new vision in vision.py with a flood-fill helper over the board grid, returning normalised counts (per move, or total plus three values) so the input size stays small. Add an optional depth or max-count param if useful. Check that the vision works with both GA and DQN input handling.",
+        "effort": "medium",
+        "first_experiment": "DQN on the reachable vision with the run 04 reward settings. Compare body-crash share and test mean with the rays result (body 69%, mean 27.06)."
+      },
+      {
+        "title": "Fair compute comparison (equal steps and core-minutes)",
+        "kind": "training",
+        "ideas": [
+          "idea-2",
+          "idea-13"
+        ],
+        "what": "Add a budget mode that gives each algorithm the same number of environment steps (or the same core-minutes) instead of the same wall-clock time, and show test score per core-minute beside score per env step.",
+        "why": "The GA ran on 11 cores at about 255k steps per second while DQN used one core at about 2.3k, so a 10-minute race mostly measures hardware. A GA-DQN comparison on equal steps or core-minutes is needed before conclusions about learning methods can be drawn.",
+        "how": "Add a budget_mode setting (time, steps, or core_minutes) to the trainer scripts, with the step count applied to both algorithms. Add a core-count cap for the GA's worker pool so the core budget is controlled. Record cores and minutes per run and add score per core-minute to the comparison view.",
+        "effort": "medium",
+        "first_experiment": "Compare the GA and DQN baseline on 5 million env steps each, with the GA limited to 1 core, and see which algorithm leads."
+      }
+    ],
+    "later": [
+      {
+        "title": "DQN train-every-N-steps setting",
+        "ideas": [
+          "idea-6"
+        ],
+        "reason": "The evidence is one run, and the gain is mostly in throughput, which is confounded with the wall-clock comparison that is being fixed first. Build it after the fair compute comparison, so its effect can be measured against equal steps."
+      },
+      {
+        "title": "Convolutional network for full-board vision",
+        "ideas": [
+          "idea-14"
+        ],
+        "reason": "Large effort: a new network type shared by GA and DQN, and the GA's full-board starvation may be a fitness or reward problem rather than an input-size problem. Revisit once the reward split and reachable-space vision show whether the bottleneck is representation or reward."
+      }
+    ],
+    "drop": []
+  }
+}

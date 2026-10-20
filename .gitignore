@@ -1,0 +1,19 @@
+__pycache__/
+.pytest_cache/
+*.tmp
+
+# Secrets (API keys for the LLM analysis, see llm.py)
+.env
+.env.*
+!.env.example
+
+# Outputs of trainers run on their own (python train_ga.py / train_dqn.py).
+# Runs started from the dashboard, run_all.py or experiment.py are kept in lessons/ and committed.
+/live/
+/results/
+/models/
+/logs/
+
+# Trainer output of recorded runs (large and machine-specific)
+lessons/*/runs/*/logs/
+ideas/*.log

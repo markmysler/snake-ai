@@ -1,0 +1,276 @@
+{
+  "state": "done",
+  "model": "claude-haiku-5-5",
+  "created": "2026-10-15 06:41:09",
+  "seconds": 34.8,
+  "usage": {
+    "model": "claude-haiku-5-5",
+    "prompt_tokens": 10077,
+    "completion_tokens": 6666
+  },
+  "result": {
+    "headline": "Removing the survival reward roughly doubled the GA's test mean (15.99 to 33.95) and shortened its test games to 543 steps, while DQN barely moved (25.81 to 26.75), all from a single seed.",
+    "summary": "**GA (neuroevolution):** The GA reached a test mean of 33.95 apples-equivalent points (median 34, best 44) over 100 fixed-seed games. Its test games averaged 543 steps, so the first prediction target (below 1,000 steps) held. Over the 10-minute budget it ran about 141 million environment steps across 493 generations, and its best game (47 in training) was reached at about 4.8 minutes and never beaten afterwards. Its training mean over the last 100 games was 29.0, and that curve rose and then wobbled between about 26 and 30 from roughly minute 3.8 onward, which is a sign of a slow plateau.\n\n**DQN (Deep Q-learning):** The DQN reached a test mean of 26.75 (median 26, best 44) with an average game length of only 236 steps. It ran about 0.92 million environment steps. Its training mean rose quickly to about 16 by minute 1 and then stayed between 19 and 21 for the rest of the run, ending at 18.27. Its best game (44) appeared by minute 3.65 and was never beaten. Its training speed was low (about 1,200 to 3,700 steps per second), so it was limited by how fast it could learn, not by the reward change. Per environment step DQN was far more efficient (26.75 points from 0.92 million steps, against 33.95 from 141 million for the GA), but the two were compared on equal wall-clock time, so the GA's higher score is the fair headline here.",
+    "diagnosis": "The survival feature paid +0.1 per move, so a 100-move safe loop earned +10, the same as eating one apple. Under this reward the GA's fitness rewarded staying alive and circling rather than eating, and the scratch run's 15.99 test mean and 22.1 training mean fit that. Dropping the feature removed the reward for wandering, and the GA moved toward apples: its test games got shorter and its test mean doubled. Starvation (a 100 \u00d7 length move limit with a -10 penalty) still stops endless loops, so games cannot run forever.\n\nDQN barely changed because its test mean moved by only +0.94, which is inside the noise of one seed. Its plateau near 20 comes from its short planning horizon (gamma 0.95 looks about 20 moves ahead) and its slow learning rate on one core, not from the survival term. The scratch comparison's claim of 1,937 steps per GA test game is not in the data for this record, so it cannot be checked here. The GA's 33.95 is still below the short-vision GA baseline of 51.55 from lesson 01, which had a different reward scale, so vision and reward both matter.",
+    "learned": "A small per-move bonus can quietly outweigh a large goal reward: with survival at 0.1, 100 safe moves were worth as much as one apple, and evolution learned to wander. Judge the change by the fixed-seed test score, and check it on a second seed before trusting a difference this size.",
+    "prediction_check": "Mostly held: GA test steps fell to 543 (below 1,000), its test mean rose to 33.95 (above 16), and DQN moved by +0.94 (under 3 points), but the predicted GA range of roughly 18 to 22 was missed by a wide margin."
+  },
+  "recommendations": [
+    {
+      "title": "Repeat the run on seed 1",
+      "why": "The GA's jump from 15.99 to 33.95 and the DQN change both come from a single seed, so one more seed shows whether the drop in survival reliably helps the GA and leaves DQN unchanged.",
+      "change": "Keep every setting from this run and change only the random seed from 0 to 1.",
+      "prediction": "GA test mean stays between 25 and 40, and the GA test games stay under 1,000 steps; DQN stays within 3 points of 26.75.",
+      "question": "Is the no-survival GA improvement reproducible on a different seed, or is it seed luck?",
+      "new_lesson": false,
+      "lesson_slug": "03-drop-survival-reward",
+      "recipe": {
+        "seed": 1
+      },
+      "config": {
+        "lesson": "03-drop-survival-reward",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "starve": 10.0,
+          "win": 100.0
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 1
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "seed 0 \u2192 1"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Lengthen the DQN planning horizon",
+      "why": "DQN's training mean stalls near 20 after about a minute, and gamma 0.95 values only about 20 moves ahead, which may be too short to plan around the body and walls.",
+      "change": "Raise the DQN's gamma from 0.95 to 0.99 and leave the GA unchanged.",
+      "prediction": "DQN test mean rises by 2 to 5 points, to about 29 to 32, and its training mean stops flattening early.",
+      "question": "Is DQN's plateau caused by a short planning horizon rather than by the time budget?",
+      "new_lesson": true,
+      "lesson_slug": "dqn-horizon",
+      "recipe": {
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {}
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "gamma": 0.99
+            }
+          }
+        ]
+      },
+      "config": {
+        "lesson": "03-drop-survival-reward",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "starve": 10.0,
+          "win": 100.0
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.99,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "dqn gamma 0.95 \u2192 0.99"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Average GA fitness over ten games",
+      "why": "Each GA fitness score averages only 3 games, which is noisy, and the GA's training mean wobbles between 26 and 30 after minute 3. Less noisy fitness may help selection find better networks.",
+      "change": "Raise the GA's games per fitness evaluation from 3 to 10 and leave the DQN unchanged.",
+      "prediction": "GA test mean rises to about 38 to 42, with fewer generations (about 150 instead of 493) in the same 10 minutes.",
+      "question": "Is the GA plateau caused by noisy fitness estimates rather than by the network or the reward?",
+      "new_lesson": true,
+      "lesson_slug": "ga-fitness-games",
+      "recipe": {
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "games": 10
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {}
+          }
+        ]
+      },
+      "config": {
+        "lesson": "03-drop-survival-reward",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "starve": 10.0,
+          "win": 100.0
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 10,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "ga games 3 \u2192 10"
+      ],
+      "launched": []
+    }
+  ],
+  "recommended": 0,
+  "ideas": [
+    {
+      "id": "idea-3",
+      "title": "Compare several seeds with spread",
+      "kind": "dashboard",
+      "what": "Run one recipe across several seeds and show the test mean for each agent as a range or error bar, so a difference is only called real when the spread does not overlap.",
+      "why": "This run's headline rests on one seed, and the GA's 15.99 versus 33.95 gap could be partly luck; the DQN change of +0.94 is clearly noise but the dashboard cannot show that today.",
+      "expected": "Lets learners judge whether a change is real, for example by requiring a gap larger than the seed-to-seed spread, which should prevent most misreadings of one-seed runs.",
+      "effort": "medium",
+      "status": "new",
+      "created": "2026-10-15 06:41:09",
+      "source": {
+        "run": "03-drop-survival-reward/2026-10-15_063020",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-4",
+      "title": "Store test-game steps for every run",
+      "kind": "evaluation",
+      "what": "Record mean steps per test game and mean steps per run for every run, including older ones, so the lesson's comparisons can be checked from the record.",
+      "why": "The scratch run's wandering claim (1,937 steps per test game) cannot be checked because that run has no test-game statistics, though this run shows the metric is useful (543 steps for the GA, 236 for DQN).",
+      "expected": "Makes every 'the snake wanders' claim verifiable from the record, so comparisons between lessons use the same measured numbers.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-15 06:41:09",
+      "source": {
+        "run": "03-drop-survival-reward/2026-10-15_063020",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    }
+  ]
+}

@@ -1,0 +1,275 @@
+{
+  "state": "done",
+  "model": "claude-haiku-5-5",
+  "created": "2026-10-15 06:26:54",
+  "seconds": 36.9,
+  "usage": {
+    "model": "claude-haiku-5-5",
+    "prompt_tokens": 9149,
+    "completion_tokens": 7485
+  },
+  "result": {
+    "headline": "DQN scored higher on the fixed test set (mean 25.81 vs 15.99 for the GA) while using about 139 times fewer environment steps (1.30M vs 180.8M), but the GA's best model survives about 1,937 moves per game, which suggests the survival reward is paying it to wander.",
+    "summary": "**DQN** (a neural network that learns the value of each move from stored experience) reached a test mean of 25.81 apples, median 26, best 40, and played short games (225 steps on average). Its training curve rose fast: a mean of 17.3 over the last 100 games by 0.9 min, then flattened around 19 to 21 for the remaining 9 minutes, even though the run reached 1.3M steps. Its best test-set game (46) was already reached by about 7 min.\n\n**GA** (neuroevolution: a population of networks is mutated and selected) reached a test mean of 15.99, median 14, best 32, and its games were very long (1,937 steps on average). Its training mean climbed steadily from 0.13 to 22.1 over 315 generations, with a visible plateau between about 1.4 and 6 min, then a late rise. Its best single game in training was 39. Each generation is judged on only 3 games, so the saved 'best' model is partly a lucky draw; this is one reason the test score (15.99) sits well below its training mean (22.1).\n\nRead the numbers with care. One run is one seed (seed 0), so a gap of a few points may be noise, but a 10-point gap and a 140-fold difference in steps are far larger than that. Both agents had the same 10 minutes, but the GA ran on 11 cores at about 255k steps per second, while DQN ran on one core at about 2.3k steps per second. The fair comparison of learning efficiency is score per step (DQN is far ahead); the comparison of speed is steps per second (the GA is far ahead).",
+    "diagnosis": "The shared reward gives survival 0.1 per move. With apples worth only 10, a snake that stays alive for 1,900 moves collects about 190 points from survival alone, roughly 19 apples' worth. That makes wandering a rewarding strategy for the GA, which has no other way to learn that long games are worthless, and it explains the long test games and the score lagging its training mean. This is the main change compared with lesson 01 (where apples were worth 100 and the GA scored 51.55). Note that this run also changed the vision (short to rays with depth 4) and added starve and win to the reward, so it cannot be compared cleanly with lesson 01 on its own; the DQN gain from 21.3 to 25.8 is probably due to the new vision, but the reward changed too.\n\nFor DQN, the flat plateau from about 2 min onward, while steps grew about tenfold, suggests it has learned what its inputs and short horizon allow. Its gamma of 0.95 values rewards only about 20 moves ahead, which may be too short to plan toward distant apples on a 10x10 board. Depth 4 rays also let it see only four squares along each of 8 lines. Exploration is probably no longer the limit: epsilon decays over 100k steps, which were used up by about 1 min, so the training mean after that reflects the agent's own play.",
+    "learned": "A learning curve can look fine while the score is still limited by the reward or the inputs; always check the test score and the steps per game, not only the training mean. Also, what the agent is paid for can matter as much as the algorithm: a small per-move reward can make long, pointless games the best strategy.",
+    "prediction_check": null
+  },
+  "recommendations": [
+    {
+      "title": "Remove the survival reward",
+      "why": "The GA's best model plays 1,937 steps per test game, which suggests the 0.1 per-move survival reward pays for wandering. Dropping it should make games shorter and push the GA toward apples; it also affects DQN, so it tests the reward as one setting.",
+      "change": "Remove the survival feature from the reward (keep apple, death, starve and win unchanged).",
+      "prediction": "GA mean steps per test game fall below 1,000 and its test mean rises above 16 (roughly 18 to 22); DQN changes by less than 3 points.",
+      "question": "Is the GA's long, wandering play caused by the survival reward?",
+      "new_lesson": true,
+      "lesson_slug": "drop-survival-reward",
+      "recipe": {
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "starve": 10.0,
+          "win": 100.0
+        }
+      },
+      "config": {
+        "lesson": "03-drop-survival-reward",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "starve": 10.0,
+          "win": 100.0
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "reward: \u2212 survival"
+      ],
+      "launched": [
+        "03-drop-survival-reward/2026-10-15_063020"
+      ]
+    },
+    {
+      "title": "Look farther with rays depth 8",
+      "why": "DQN plateaued near 20 in training and its depth-4 rays see only four squares, so it may be blind to apples and walls it needs to plan around. Doubling the depth tests whether the vision is the limit.",
+      "change": "Change the rays depth from 4 to 8 (vision type stays rays).",
+      "prediction": "DQN test mean rises from 25.8 toward 28 to 32; the input count grows from 28 to about 52.",
+      "question": "Does seeing farther along each line raise the best DQN score?",
+      "new_lesson": true,
+      "lesson_slug": "rays-depth-8",
+      "recipe": {
+        "vision": {
+          "type": "rays",
+          "depth": 8
+        }
+      },
+      "config": {
+        "lesson": "03-drop-survival-reward",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "rays",
+          "depth": 8
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "starve": 10.0,
+          "win": 100.0,
+          "survival": 0.1
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "vision rays:depth=4 \u2192 rays:depth=8"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Raise DQN gamma to 0.99",
+      "why": "With gamma 0.95, DQN values rewards only about 20 moves ahead, which may be too short to plan toward distant apples. Raising gamma to 0.99 tests whether the plateau is short-sightedness.",
+      "change": "Set DQN's gamma to 0.99; leave the GA unchanged.",
+      "prediction": "DQN test mean rises by 2 to 5 points and its training curve keeps climbing past 1 min instead of flattening at about 20.",
+      "question": "Does valuing the long term let DQN break its plateau?",
+      "new_lesson": true,
+      "lesson_slug": "dqn-gamma-0-99",
+      "recipe": {
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {}
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "gamma": 0.99
+            }
+          }
+        ]
+      },
+      "config": {
+        "lesson": "03-drop-survival-reward",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 10.0,
+          "starve": 10.0,
+          "win": 100.0,
+          "survival": 0.1
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.99,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "dqn gamma 0.95 \u2192 0.99"
+      ],
+      "launched": []
+    }
+  ],
+  "recommended": 0,
+  "ideas": [
+    {
+      "id": "idea-1",
+      "title": "Show starvation and steps per game",
+      "kind": "dashboard",
+      "what": "Add a panel to the test results that shows, for each agent, the share of test games that ended by starving or crashing, next to the mean steps per game.",
+      "why": "The GA's 1,937 steps per test game suggests it loops until it starves, but the current table does not show how games ended, so the learner has to infer looping from one number.",
+      "expected": "Makes reward hacking like the survival-driven wandering visible in one glance, so learners can spot it in any run.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-15 06:26:54",
+      "source": {
+        "run": "03-drop-survival-reward/2026-10-15_053106",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-2",
+      "title": "Compare agents on equal compute",
+      "kind": "training",
+      "what": "Offer a budget mode that gives each agent the same number of CPU cores (or the same environment steps) instead of the same wall-clock time, and report the resulting comparison.",
+      "why": "The GA used 11 cores at about 255k steps per second, while DQN used one core at about 2.3k steps per second; a 10-minute race is therefore not a fair comparison of learning methods.",
+      "expected": "Would show whether DQN's lead holds when both agents have the same resources, rather than depending on hardware assignment.",
+      "effort": "medium",
+      "status": "new",
+      "created": "2026-10-15 06:26:54",
+      "source": {
+        "run": "03-drop-survival-reward/2026-10-15_053106",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    }
+  ]
+}

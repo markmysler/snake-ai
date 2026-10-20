@@ -1,0 +1,255 @@
+{
+  "state": "done",
+  "model": "claude-haiku-5-5",
+  "created": "2026-10-15 07:17:52",
+  "seconds": 27.4,
+  "usage": {
+    "model": "claude-haiku-5-5",
+    "prompt_tokens": 13336,
+    "completion_tokens": 5189
+  },
+  "result": {
+    "headline": "Raising the death penalty from 10 to 30 cut DQN's body crashes from 69% to 56% (prediction held), but its test mean fell from 27.1 to 24.9 because the crashes moved to walls.",
+    "summary": "**DQN** (the value-learning agent, which learns the future reward of each move) scored a test mean of **24.9** (median 25, best 46) over 100 fixed-seed games. Its test games ended in a body crash 56% of the time and a wall crash 44%, against 69% body and 31% wall in run 04. It took 219 steps per game and 9 steps per apple, the same efficiency as before. Its training curve climbed to about 20\u201322 by minute 2.75 and then flattened. The final training mean of 18.75 is lower because it includes random exploration moves. DQN used 449k environment steps in 5 minutes, about 1,500 steps per second on one core.\n\n**GA** (the evolution agent, which breeds networks by mutation and selection, with no gradients) scored a test mean of **32.8** (median 33, best 38). It ended 64% of games in a body crash and 36% in a wall crash, up from 11% wall in run 04. Its training mean rose steadily to about 26 by minute 3 and then levelled off. It ran 63.8 million steps in 5 minutes, about 140 times DQN's step count, at roughly 200k steps per second across 11 cores.",
+    "diagnosis": "The penalty applies to every crash, whether into the body or a wall, so it cannot teach DQN which crash to avoid. The stronger penalty made DQN crash into walls more often: wall crashes went from 31 to 44 of 100 games. That fits the result: the snake's failure mode changed, and its score did not rise. The 2.2-point drop in DQN's score is within the spread of the other DQN rays runs (25.8 to 27.1), so one seed cannot show it is a real loss. For the GA, the +7.8 change (25.1 to 32.8) is also within the spread of the other 5\u201310 minute GA runs (25 to 34). It is probably luck in which population evolved, not an effect of the penalty. Both agents share the same observation, so the death penalty could also be exposing a limit of the rays view: with 4 squares of look-ahead, the snake may see its body only when it is already close.",
+    "learned": "A penalty tells the agent that a crash is bad, not where or why it happened, so a stronger penalty can shift crashes to another place without improving the score. Always check the score and how games end together, not just the one crash share the prediction targeted.",
+    "prediction_check": "Held on both numbers: DQN's body share fell to 56% (below 60%) and its test mean of 24.9 landed inside the 24 to 30 band, at the low edge, though the score did not rise as the lesson hoped."
+  },
+  "recommendations": [
+    {
+      "title": "Look further ahead with rays depth 8",
+      "why": "If DQN sees its body only when it is already adjacent, deeper rays should give earlier warning and reduce body crashes. The 56% body share and the wall-crash rise both point at a short look-ahead.",
+      "change": "Set the rays vision depth from 4 to 8 squares, keeping the reward and the 5-minute budget.",
+      "prediction": "DQN test mean rises to 27 to 31 (above the 24.9 here), and the combined body-plus-wall crash share stays at 100% but more games reach 30 or more apples.",
+      "question": "Is DQN limited by how far it can see, rather than by the strength of the penalty?",
+      "new_lesson": true,
+      "lesson_slug": "rays-look-ahead",
+      "recipe": {
+        "vision": {
+          "type": "rays",
+          "depth": 8
+        }
+      },
+      "config": {
+        "lesson": "05-death-penalty-body-crashes",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "rays",
+          "depth": 8
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 30.0,
+          "starve": 10.0,
+          "potential": 0.1,
+          "hunger": 0.01
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 5.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "vision rays:depth=4 \u2192 rays:depth=8"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Repeat this run with seed 1",
+      "why": "One seed cannot tell whether DQN's drop from 27.1 to 24.9 is real or just luck. Repeating the same recipe with another seed shows how far the score moves by chance.",
+      "change": "Change only the random seed from 0 to 1; keep the death penalty at 30 and every other setting the same.",
+      "prediction": "DQN test mean lands between 23 and 29, and body share stays below 65%; if it stays under 60%, the crash shift is reproducible.",
+      "question": "Are the body-crash drop and the score change repeatable across seeds?",
+      "new_lesson": false,
+      "lesson_slug": "05-death-penalty-body-crashes",
+      "recipe": {
+        "seed": 1
+      },
+      "config": {
+        "lesson": "05-death-penalty-body-crashes",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 30.0,
+          "starve": 10.0,
+          "potential": 0.1,
+          "hunger": 0.01
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 5.0,
+        "width": 10,
+        "height": 10,
+        "seed": 1
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "seed 0 \u2192 1"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Value future crashes more with gamma 0.99",
+      "why": "DQN with gamma 0.95 values rewards only about 20 moves ahead, so a crash many moves away barely shapes its choices. A larger gamma should let the 30-point penalty influence earlier turns.",
+      "change": "Set DQN's gamma from 0.95 to 0.99; keep the GA and all other settings the same.",
+      "prediction": "DQN steps per apple rise and the body-plus-wall crash rate falls, with the test mean moving 2 or more points (direction uncertain).",
+      "question": "Does a longer planning horizon let DQN use the death penalty to avoid crashes earlier?",
+      "new_lesson": true,
+      "lesson_slug": "long-horizon-dqn",
+      "recipe": {
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {}
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "gamma": 0.99
+            }
+          }
+        ]
+      },
+      "config": {
+        "lesson": "05-death-penalty-body-crashes",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "rays",
+          "depth": 4
+        },
+        "reward": {
+          "apple": 10.0,
+          "death": 30.0,
+          "starve": 10.0,
+          "potential": 0.1,
+          "hunger": 0.01
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.99,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 5.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "dqn gamma 0.95 \u2192 0.99"
+      ],
+      "launched": [
+        "06-long-horizon-dqn/2026-10-15_071903"
+      ]
+    }
+  ],
+  "recommended": 0,
+  "ideas": [
+    {
+      "id": "idea-8",
+      "title": "Separate penalties for body and wall crashes",
+      "kind": "reward",
+      "what": "Add two reward features, one for crashing into the body and one for crashing into a wall, so each crash type can be weighted separately instead of sharing one death penalty.",
+      "why": "Raising the single death penalty cut body crashes from 69% to 56% but raised wall crashes from 31% to 44%, showing one penalty cannot target both failure modes.",
+      "expected": "A body-only penalty should cut body crashes without pushing wall crashes up; the target is a body share under 50% with the test mean above 28.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-15 07:17:52",
+      "source": {
+        "run": "05-death-penalty-body-crashes/2026-10-15_071211",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    }
+  ]
+}

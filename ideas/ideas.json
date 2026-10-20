@@ -1,0 +1,357 @@
+{
+  "last": 22,
+  "ideas": [
+    {
+      "id": "idea-1",
+      "title": "Show starvation and steps per game",
+      "kind": "dashboard",
+      "what": "Add a panel to the test results that shows, for each agent, the share of test games that ended by starving or crashing, next to the mean steps per game.",
+      "why": "The GA's 1,937 steps per test game suggests it loops until it starves, but the current table does not show how games ended, so the learner has to infer looping from one number.",
+      "expected": "Makes reward hacking like the survival-driven wandering visible in one glance, so learners can spot it in any run.",
+      "effort": "small",
+      "status": "done",
+      "created": "2026-10-15 06:26:54",
+      "source": {
+        "run": "03-drop-survival-reward/2026-10-15_053106",
+        "model": "claude-haiku-5-5"
+      },
+      "review": "2026-10-15_064233"
+    },
+    {
+      "id": "idea-2",
+      "title": "Compare agents on equal compute",
+      "kind": "training",
+      "what": "Offer a budget mode that gives each agent the same number of CPU cores (or the same environment steps) instead of the same wall-clock time, and report the resulting comparison.",
+      "why": "The GA used 11 cores at about 255k steps per second, while DQN used one core at about 2.3k steps per second; a 10-minute race is therefore not a fair comparison of learning methods.",
+      "expected": "Would show whether DQN's lead holds when both agents have the same resources, rather than depending on hardware assignment.",
+      "effort": "medium",
+      "status": "reviewed",
+      "created": "2026-10-15 06:26:54",
+      "source": {
+        "run": "03-drop-survival-reward/2026-10-15_053106",
+        "model": "claude-haiku-5-5"
+      },
+      "review": "2026-10-15_074740"
+    },
+    {
+      "id": "idea-3",
+      "title": "Compare several seeds with spread",
+      "kind": "dashboard",
+      "what": "Run one recipe across several seeds and show the test mean for each agent as a range or error bar, so a difference is only called real when the spread does not overlap.",
+      "why": "This run's headline rests on one seed, and the GA's 15.99 versus 33.95 gap could be partly luck; the DQN change of +0.94 is clearly noise but the dashboard cannot show that today.",
+      "expected": "Lets learners judge whether a change is real, for example by requiring a gap larger than the seed-to-seed spread, which should prevent most misreadings of one-seed runs.",
+      "effort": "medium",
+      "status": "done",
+      "created": "2026-10-15 06:41:09",
+      "source": {
+        "run": "03-drop-survival-reward/2026-10-15_063020",
+        "model": "claude-haiku-5-5"
+      },
+      "review": "2026-10-15_064233"
+    },
+    {
+      "id": "idea-4",
+      "title": "Store test-game steps for every run",
+      "kind": "evaluation",
+      "what": "Record mean steps per test game and mean steps per run for every run, including older ones, so the lesson's comparisons can be checked from the record.",
+      "why": "The scratch run's wandering claim (1,937 steps per test game) cannot be checked because that run has no test-game statistics, though this run shows the metric is useful (543 steps for the GA, 236 for DQN).",
+      "expected": "Makes every 'the snake wanders' claim verifiable from the record, so comparisons between lessons use the same measured numbers.",
+      "effort": "small",
+      "status": "done",
+      "created": "2026-10-15 06:41:09",
+      "source": {
+        "run": "03-drop-survival-reward/2026-10-15_063020",
+        "model": "claude-haiku-5-5"
+      },
+      "review": "2026-10-15_064233"
+    },
+    {
+      "id": "idea-5",
+      "title": "Seed-group spread on test scores",
+      "kind": "evaluation",
+      "what": "Show the test mean with its spread (min, max, or standard deviation) across several seeds of the same recipe on the results table, so a single seed cannot be read as a ranking.",
+      "why": "The GA and DQN test means differ by about 4 points on one seed, and the training curves wobble by 4 to 5 points between checkpoints, so the lab cannot tell noise from effect here.",
+      "expected": "Lets learners see whether a gap is bigger than the seed-to-seed spread, which is usually a few points for these runs.",
+      "effort": "medium",
+      "status": "reviewed",
+      "created": "2026-10-15 07:04:59",
+      "source": {
+        "run": "04-window-vs-rays/2026-10-15_065902",
+        "model": "claude-haiku-5-5"
+      },
+      "review": "2026-10-15_074740"
+    },
+    {
+      "id": "idea-6",
+      "title": "DQN train-every-N-steps setting",
+      "kind": "algorithm",
+      "what": "Add a setting for how often DQN takes a gradient update (for example one update per 4 environment steps), so the agent can spend less time training and more time collecting experience per second.",
+      "why": "DQN ran at about 1.3k steps per second and collected only 391k steps in 5 minutes, while the GA collected 30.8M. Its curve was still rising at minute 1.4 and then flattened, so more experience per minute may help it.",
+      "expected": "Several times more environment steps per minute for DQN, which could raise its test mean by a few points within the same 5-minute budget.",
+      "effort": "medium",
+      "status": "reviewed",
+      "created": "2026-10-15 07:04:59",
+      "source": {
+        "run": "04-window-vs-rays/2026-10-15_065902",
+        "model": "claude-haiku-5-5"
+      },
+      "review": "2026-10-15_074740"
+    },
+    {
+      "id": "idea-7",
+      "title": "Free-space flood-fill vision feature",
+      "kind": "vision",
+      "what": "Add a vision input that reports how many empty squares the snake can reach from its head without crossing its body or a wall, perhaps split into the left, straight and right options. This gives the network a direct sense of boxing itself in.",
+      "why": "Both the window and rays visions still show DQN dying from its own body in 69 to 76% of test games, even though each sees the nearby body. Neither reports how much room is left, which is what matters when the snake grows long on a small board.",
+      "expected": "DQN's body-crash share falls by 10 points or more (from 69% to 60% or lower), and its test mean rises by 3 or more points.",
+      "effort": "medium",
+      "status": "done",
+      "created": "2026-10-15 07:11:39",
+      "source": {
+        "run": "04-window-vs-rays/2026-10-15_070555",
+        "model": "claude-haiku-5-5"
+      },
+      "review": "2026-10-15_074740"
+    },
+    {
+      "id": "idea-8",
+      "title": "Separate penalties for body and wall crashes",
+      "kind": "reward",
+      "what": "Add two reward features, one for crashing into the body and one for crashing into a wall, so each crash type can be weighted separately instead of sharing one death penalty.",
+      "why": "Raising the single death penalty cut body crashes from 69% to 56% but raised wall crashes from 31% to 44%, showing one penalty cannot target both failure modes.",
+      "expected": "A body-only penalty should cut body crashes without pushing wall crashes up; the target is a body share under 50% with the test mean above 28.",
+      "effort": "small",
+      "status": "done",
+      "created": "2026-10-15 07:17:52",
+      "source": {
+        "run": "05-death-penalty-body-crashes/2026-10-15_071211",
+        "model": "claude-haiku-5-5"
+      },
+      "review": "2026-10-15_074740"
+    },
+    {
+      "id": "idea-9",
+      "title": "Run several seeds and show spread",
+      "kind": "evaluation",
+      "what": "Add a button that trains the same recipe with three or four seeds and reports the test mean with its range (or standard error) on the dashboard and in the lesson table.",
+      "why": "This run's key result (DQN up 3.9 points) rests on a single seed, and the lab currently has no way to measure seed-to-seed spread without launching each seed by hand.",
+      "expected": "Each comparison would come with an error bar, so learners could tell differences larger than seed noise from smaller ones, instead of guessing.",
+      "effort": "medium",
+      "status": "reviewed",
+      "created": "2026-10-15 07:24:44",
+      "source": {
+        "run": "06-long-horizon-dqn/2026-10-15_071903",
+        "model": "claude-haiku-5-5"
+      },
+      "review": "2026-10-15_074740"
+    },
+    {
+      "id": "idea-10",
+      "title": "Show crash mix over training",
+      "kind": "dashboard",
+      "what": "Plot the share of wall, body, starved and won endings in each evaluation, rather than only in the final test table.",
+      "why": "The gamma change moved the crash mix (body 56% to 29%, wall 44% to 71%) while the test mean moved less. The current view shows only the end state, so learners cannot see when the shift happened.",
+      "expected": "Learners could see whether the crash mix shifts early in training or only late, which would help explain how the horizon works.",
+      "effort": "small",
+      "status": "done",
+      "created": "2026-10-15 07:24:44",
+      "source": {
+        "run": "06-long-horizon-dqn/2026-10-15_071903",
+        "model": "claude-haiku-5-5"
+      },
+      "review": "2026-10-15_074740"
+    },
+    {
+      "id": "idea-11",
+      "title": "Show how game endings change over training",
+      "kind": "dashboard",
+      "what": "Plot the share of wall, body, starved and won games at each training checkpoint, not only at the final test.",
+      "why": "The GA's 22 starved games are visible only in the final test table. The curves do not show when looping began or whether it is growing.",
+      "expected": "Lets the learner see whether the starved share rises during training, for example from 0% to 22%, and link it to the reward changes.",
+      "effort": "small",
+      "status": "done",
+      "created": "2026-10-15 07:30:20",
+      "source": {
+        "run": "07-short-no-survival/2026-10-15_072628",
+        "model": "claude-haiku-5-5"
+      },
+      "review": "2026-10-15_074740"
+    },
+    {
+      "id": "idea-12",
+      "title": "Add a reachable-space vision feature",
+      "kind": "vision",
+      "what": "Add an input that reports how many empty squares the snake could still reach from its head, using a flood fill that stops at walls and body.",
+      "why": "DQN with short vision dies in its own body in 88% of test games, and it plateaus at about 15-16 in training. The catalog's visions do not show the snake how much room it has left.",
+      "expected": "Reduces DQN's body-collision share below 60% and lifts its test mean by 5 or more points at 3 minutes, if the room count is what limits it.",
+      "effort": "medium",
+      "status": "done",
+      "created": "2026-10-15 07:30:20",
+      "source": {
+        "run": "07-short-no-survival/2026-10-15_072628",
+        "model": "claude-haiku-5-5"
+      },
+      "review": "2026-10-15_074740"
+    },
+    {
+      "id": "idea-13",
+      "title": "Score per CPU core-minute in comparisons",
+      "kind": "evaluation",
+      "what": "Add a comparison view that shows test score divided by the CPU cores each agent used and the minutes it ran, next to the existing score per env step.",
+      "why": "The GA ran on 11 cores while DQN ran on 1, so a same-wall-clock comparison favours the GA. Its 66 million env steps against DQN's 0.26 million mostly reflect hardware, not learning quality.",
+      "expected": "Lets learners see whether DQN's per-step efficiency (score 15 after 110k steps) beats the GA on a fair compute basis, which the current table cannot show.",
+      "effort": "medium",
+      "status": "reviewed",
+      "created": "2026-10-15 07:34:29",
+      "source": {
+        "run": "07-short-no-survival/2026-10-15_073045",
+        "model": "claude-haiku-5-5"
+      },
+      "review": "2026-10-15_074740"
+    },
+    {
+      "id": "idea-14",
+      "title": "Convolutional network for full-board vision",
+      "kind": "algorithm",
+      "what": "Add a network that scans the board with shared small filters, so it learns local patterns (such as 'body is one square ahead') once instead of separately for each of 1083 inputs. It would be used for both the GA and DQN.",
+      "why": "The full view gives the GA 1083 inputs, and it starved in all 100 test games with 50M steps and a flat curve. The DQN reached 30 with the same view, but its training was slow at about 100 to 750 steps per second.",
+      "expected": "The GA could move well above its current mean of 1.44 with the full board, and the DQN could train faster per step, reaching the 20-plus plateau in fewer environment steps.",
+      "effort": "large",
+      "status": "reviewed",
+      "created": "2026-10-15 07:46:33",
+      "source": {
+        "run": "total-viz-test/2026-10-15_073535",
+        "model": "claude-haiku-5-5"
+      },
+      "review": "2026-10-15_074740"
+    },
+    {
+      "id": "idea-15",
+      "title": "Plot greedy test scores on the learning curves",
+      "kind": "dashboard",
+      "what": "Draw the greedy evaluation score that DQN already computes every eval_every steps as a line on its learning curve, next to the training mean. Show the evaluation points so a learner can see when the saved best model improved.",
+      "why": "The training mean (23.0 for DQN, 21.2 for GA) understates the test score (37.56 and 36.27), and the curves stop around 21 to 23 while the saved model keeps improving. The current curves cannot show which model is being saved, so a learner cannot tell whether a plateau is real.",
+      "expected": "Learners can see the gap between training mean and greedy score at every checkpoint, and can spot plateaus or late gains. This makes the minute-by-minute comparison fair and reduces guesses about when to stop a run.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-15 08:14:04",
+      "source": {
+        "run": "08-wall-crash-penalty/2026-10-15_080258",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-16",
+      "title": "Crash-type share over training",
+      "kind": "dashboard",
+      "what": "Plot the wall, body, starved and won shares of training games against env steps, so learners can see when a snake starts avoiding walls and whether its deaths move to the body.",
+      "why": "The test table shows the crash shift only at the end. The training curves show a single mean, so we cannot tell whether the wall share fell gradually or changed suddenly.",
+      "expected": "Makes the moment the wall share falls visible in each run, e.g. the shift in this run should appear by about minute 3 to 5 if it tracks the learning curve.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-15 14:16:18",
+      "source": {
+        "run": "08-wall-crash-penalty/2026-10-15_140510",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-17",
+      "title": "Growing penalty for long gaps without eating",
+      "kind": "reward",
+      "what": "A reward feature that subtracts a small amount each move, increasing with the number of moves since the last apple, so loops become more costly the longer they last. It would replace the flat per-move hunger cost with one that targets wandering specifically.",
+      "why": "66 of 100 test games starved after 652 steps with 46 steps per apple, and the existing hunger term is flat, so it does not single out long loops.",
+      "expected": "Starved games fall below 20 out of 100 and steps per apple fall below 30, while the test mean stays at or above the level without hunger.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-15 14:24:34",
+      "source": {
+        "run": "09-ga-games-per-genome/2026-10-15_141849",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-18",
+      "title": "Flag CPU throttling on the training curve",
+      "kind": "dashboard",
+      "what": "Mark the points on the curve where the machine is on battery or throttling, and show steps per second next to generations so a slowdown is not read as a learning change.",
+      "why": "Steps per second fell from about 170k to about 55k after 2.2 minutes while the machine was on battery, and the training mean changed at the same time.",
+      "expected": "Learners can tell a compute drop from a learning plateau, so they will not misread late-run curves.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-15 14:24:34",
+      "source": {
+        "run": "09-ga-games-per-genome/2026-10-15_141849",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-19",
+      "title": "Warn when the machine is on battery",
+      "kind": "dashboard",
+      "what": "Show a warning on the run page when the machine is on battery, and display the steps per second next to each run's expected range for its algorithm and inputs, so slow runs are flagged before they are compared.",
+      "why": "This run ran at about 59k steps per second, while comparable 3-game GA runs managed 220k to 300k. Its generation count and score are therefore hard to compare with other runs, and nothing on the page explained why.",
+      "expected": "Learners would see slowdowns at a glance, which would avoid misreading generation counts as a measure of the algorithm.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-15 14:30:50",
+      "source": {
+        "run": "09-ga-games-per-genome/2026-10-15_142501",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-20",
+      "title": "Check the GA's training mean scale",
+      "kind": "evaluation",
+      "what": "Verify how the GA's mean_last_100 is computed and make it match the test score's units (or label it clearly), so the training curve can be compared with the test mean.",
+      "why": "The logged GA training mean ended at 0.56, while the best game was 33 and the test mean was 22. The prediction and the lesson's note both assumed a training mean of 15 or more, so the curve as logged cannot be read against the test score.",
+      "expected": "Training and test scores would be directly comparable, letting learners judge overfitting and the late-decline question from the curve alone.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-15 14:30:50",
+      "source": {
+        "run": "09-ga-games-per-genome/2026-10-15_142501",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-21",
+      "title": "Show the GA's champion score next to the population mean",
+      "kind": "dashboard",
+      "what": "Add a curve of the best genome's score on a fixed evaluation set, plotted beside the population's training mean, with both labelled in apples as well as reward units.",
+      "why": "This run's training mean (7.79) and test mean (39.07) are on very different scales, which makes it hard to tell whether training is still improving.",
+      "expected": "Learners can read progress from one curve; the gap between the champion curve and the population mean would show how much luck contributes to the training numbers.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-15 14:38:14",
+      "source": {
+        "run": "09-ga-games-per-genome/2026-10-15_143223",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-22",
+      "title": "Flag comparisons that differ in several settings",
+      "kind": "dashboard",
+      "what": "When a run is compared to a baseline, list every recipe field that differs and warn when more than one changed.",
+      "why": "The games-per-genome comparison here differs from its 10-game partner in tournament, mutation rate, starve penalty, and death split, so the lesson's answer is confounded.",
+      "expected": "Learners catch confounded comparisons before drawing conclusions, which should reduce wrong attributions across lessons.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-15 14:38:14",
+      "source": {
+        "run": "09-ga-games-per-genome/2026-10-15_143223",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    }
+  ]
+}

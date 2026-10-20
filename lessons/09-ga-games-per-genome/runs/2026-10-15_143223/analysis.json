@@ -1,0 +1,222 @@
+{
+  "state": "done",
+  "model": "claude-haiku-5-5",
+  "created": "2026-10-15 14:38:14",
+  "seconds": 33.4,
+  "usage": {
+    "model": "claude-haiku-5-5",
+    "prompt_tokens": 17211,
+    "completion_tokens": 6325
+  },
+  "result": {
+    "headline": "With 3 games per genome, the GA's best snake reached a test mean of 39.07 apples-worth of score (median 39, max 67), well above the 22.24 of the 10-game run, but the two runs differ in several settings, so the gap cannot be credited to games per genome alone.",
+    "summary": "**GA (games 3, 89 generations, 5.1 min):** The test mean was 39.07 over 100 fixed-seed games, with a median of 39 and a best game of 67. Each test game lasted about 897 steps and 23 steps per apple, so the snake eats steadily. 97 of 100 test games ended in a body collision, 3 in a wall crash, none starved and none filled the board. The snake gets long and then runs into itself. Training ran 53,400 games and 16.96M env steps at about 55k steps per second on average. The training mean of the last 100 games was 7.79, which is far below the test score. That is expected: it averages the whole population's games, including weak genomes, under the training reward (the mean is in reward units, not apples). The learning curve rose from about 0 at the start to 7 to 12 by minute 1.3 to 3, peaked at 11.82 at minute 3.06, and then wandered between 4.75 and 11.82 without a clear climb. The best single game rose from 51 to 63 to 68 in the final minutes. There is no clear late decline in this run, so the question this lesson was built around does not show up here.\n\n**Comparison and noise:** The lesson's comparison run (10 games per genome) scored 22.24, but it also used tournament 3 (vs 5 here), mutation rate 0.1 (vs 0.2), and a starve penalty of 10 (vs 30). This run also uses a split death penalty (wall 10, body 10). Only one seed was run and there is no seed group, so the spread of results across seeds is unknown. A 17-point gap is large, but it cannot be attributed to games per genome from these two runs.",
+    "diagnosis": "Most likely the population learned a strong skill (eating efficiently) and then got stuck on the body-collision problem. Almost every test death is a self-collision (97 of 100), and the room vision includes a flood-fill hint, which should warn about boxing itself in, but a longer snake still gets trapped. The starve penalty of 30 and the absence of a survival reward discourage looping, which is why no game starved. Averaging over 3 games per genome makes fitness noisy, and tournament 5 and mutation 0.2 change selection strength and how much variation there is, so the higher test score may come from those settings as much as from the game count. Given the single seed, treat 39 as a strong result for this recipe, not a verified effect of games per genome.",
+    "learned": "A single number from one run mixes every setting that changed, so before crediting one change, check that the comparison run differs only in that setting. The training mean and the test score measure different things, and only the test score (fixed-seed games with the saved best model) should be used to compare runs.",
+    "prediction_check": "No. The run predicted 110 to 120 generations and a test mean of 25 to 35; it ran 89 generations and scored 39.07, so both numbers were off."
+  },
+  "recommendations": [
+    {
+      "title": "Match the 10-game run's settings but keep 10 games",
+      "why": "This run changed games and several other settings, so the lesson's question is still open. Changing only games from this run's recipe answers whether more games per genome helps when everything else is held fixed.",
+      "change": "Raise the GA's games per genome from 3 to 10 and keep every other setting from this run, including tournament 5, mutation 0.2, and the split death penalty.",
+      "prediction": "Fewer generations (about 30 to 35), a steadier rise in the training mean, and a test mean in the 30 to 45 range; a result below 30 would suggest the 10-game run's low score came from its other settings.",
+      "question": "Does more games per genome improve the GA's test score when tournament, mutation, and reward are held fixed?",
+      "new_lesson": false,
+      "lesson_slug": "09-ga-games-per-genome",
+      "recipe": {
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "games": 10
+            }
+          }
+        ]
+      },
+      "config": {
+        "lesson": "09-ga-games-per-genome",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "room"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death_wall": 10.0,
+          "death_body": 10.0,
+          "starve": 30.0,
+          "win": 100.0,
+          "potential": 0.1,
+          "hunger": 0.01
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 10,
+              "elite_frac": 0.1,
+              "tournament": 5,
+              "mutation_rate": 0.2,
+              "mutation_sigma": 0.2
+            }
+          }
+        ],
+        "time_budget_min": 5.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "ga games 3 \u2192 10"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Repeat this recipe with seed 1",
+      "why": "One seed cannot show whether 39 is a typical result or a lucky run. A second seed of the same recipe gives a first estimate of the spread that any later comparison needs.",
+      "change": "Change only the random seed from 0 to 1; keep every other setting.",
+      "prediction": "The test mean lands within about 5 points of 39 (roughly 34 to 44); a result far outside that range means seed noise is larger than the gaps this lab has been comparing.",
+      "question": "How much does the GA's test score vary between seeds with this recipe?",
+      "new_lesson": false,
+      "lesson_slug": "09-ga-games-per-genome",
+      "recipe": {
+        "seed": 1
+      },
+      "config": {
+        "lesson": "09-ga-games-per-genome",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "room"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death_wall": 10.0,
+          "death_body": 10.0,
+          "starve": 30.0,
+          "win": 100.0,
+          "potential": 0.1,
+          "hunger": 0.01
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 5,
+              "mutation_rate": 0.2,
+              "mutation_sigma": 0.2
+            }
+          }
+        ],
+        "time_budget_min": 5.0,
+        "width": 10,
+        "height": 10,
+        "seed": 1
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "seed 0 \u2192 1"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Double the GA's training time",
+      "why": "The best game kept rising (51, 63, 68) after the population mean had plateaued, so the GA may still be improving and was stopped early.",
+      "change": "Double the time budget from 5 to 10 minutes and keep every other setting.",
+      "prediction": "The test mean rises by 3 or more points (to about 42 or higher), and the best test game exceeds 70.",
+      "question": "Is the GA still improving at 5 minutes, or has it plateaued for this recipe?",
+      "new_lesson": true,
+      "lesson_slug": "ga-longer-budget",
+      "recipe": {
+        "time_budget_min": 10.0
+      },
+      "config": {
+        "lesson": "09-ga-games-per-genome",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "room"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death_wall": 10.0,
+          "death_body": 10.0,
+          "starve": 30.0,
+          "win": 100.0,
+          "potential": 0.1,
+          "hunger": 0.01
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 5,
+              "mutation_rate": 0.2,
+              "mutation_sigma": 0.2
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "training time (min) 5 \u2192 10"
+      ],
+      "launched": []
+    }
+  ],
+  "recommended": 0,
+  "ideas": [
+    {
+      "id": "idea-21",
+      "title": "Show the GA's champion score next to the population mean",
+      "kind": "dashboard",
+      "what": "Add a curve of the best genome's score on a fixed evaluation set, plotted beside the population's training mean, with both labelled in apples as well as reward units.",
+      "why": "This run's training mean (7.79) and test mean (39.07) are on very different scales, which makes it hard to tell whether training is still improving.",
+      "expected": "Learners can read progress from one curve; the gap between the champion curve and the population mean would show how much luck contributes to the training numbers.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-15 14:38:14",
+      "source": {
+        "run": "09-ga-games-per-genome/2026-10-15_143223",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-22",
+      "title": "Flag comparisons that differ in several settings",
+      "kind": "dashboard",
+      "what": "When a run is compared to a baseline, list every recipe field that differs and warn when more than one changed.",
+      "why": "The games-per-genome comparison here differs from its 10-game partner in tournament, mutation rate, starve penalty, and death split, so the lesson's answer is confounded.",
+      "expected": "Learners catch confounded comparisons before drawing conclusions, which should reduce wrong attributions across lessons.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-15 14:38:14",
+      "source": {
+        "run": "09-ga-games-per-genome/2026-10-15_143223",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    }
+  ]
+}

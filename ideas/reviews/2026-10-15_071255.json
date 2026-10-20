@@ -1,0 +1,64 @@
+{
+  "state": "done",
+  "name": "2026-10-15_071255",
+  "model": "claude-haiku-5-5",
+  "created": "2026-10-15 07:12:55",
+  "seconds": 17.1,
+  "usage": {
+    "model": "claude-haiku-5-5",
+    "prompt_tokens": 6339,
+    "completion_tokens": 3250
+  },
+  "ideas_reviewed": 4,
+  "result": {
+    "summary": "All four open ideas are real gaps: the catalog has no seed-spread reporting, no equal-compute budget mode, no DQN update-frequency setting, and no free-space vision. The most valuable next step is seed-group spread on test scores, because most current rankings (GA vs DQN differs by about 4 points, and checkpoint wobble is 4 to 5 points) cannot be read without it. Flood-fill vision comes next, since two different runs point to the same DQN body-crash problem.",
+    "build_next": [
+      {
+        "title": "Seed-group spread on the results table",
+        "kind": "evaluation",
+        "ideas": [
+          "idea-5"
+        ],
+        "what": "Let a recipe run several seeds and show the test mean with min, max and standard deviation across them in the results table. Learners should see a gap as meaningful only when it exceeds the seed-to-seed spread.",
+        "why": "Every current comparison rests on one seed: the GA and DQN test means differ by about 4 points, and checkpoints wobble by 4 to 5 points. Nothing in the catalog reports spread, so learners can read noise as effect. This is the cheapest way to make all other comparisons trustworthy.",
+        "how": "Add a 'seeds' setting (int, default 1, e.g. 1 to 10) to the training settings and loop the trainer over seeds for each recipe. Aggregate the per-seed test scores in the results/evaluation code and add mean, min, max and std columns to the results table. The dashboard picks up the new setting and columns automatically, as long as they are declared in the catalog.",
+        "effort": "medium",
+        "first_experiment": "Rerun the 03-drop-survival-reward recipe (GA and DQN, rays depth 4) with 5 seeds each, and check whether the 4-point GA vs DQN gap survives the spread."
+      },
+      {
+        "title": "Free-space flood-fill vision",
+        "kind": "vision",
+        "ideas": [
+          "idea-7"
+        ],
+        "what": "Add a vision that reports how many empty squares are reachable from the head without crossing the body or a wall, as three values for left, straight and right. This tells the network how much room it has left, which neither window nor rays shows.",
+        "why": "Both the window and rays visions show DQN dying from its own body in 69 to 76% of test games, even though each sees the nearby body. Two independent runs point to a missing signal about space, which is what matters as the snake grows on a small board.",
+        "how": "Register a new vision named 'flood' in vision.py with an optional parameter if needed (none is required). For each of the three heading options, run a breadth-first flood fill from the neighbouring square over empty cells, capped at a maximum count, and normalise by board area. Return three floats, rotated relative to the heading like the other visions. Check that the step cost stays acceptable for GA populations of 200 or more.",
+        "effort": "medium",
+        "first_experiment": "Run DQN with flood vision versus rays depth 4 on the same reward preset (potential 0.1, hunger 0.01) and check whether the body-crash share falls from about 69% toward 60% and the test mean rises by 3 or more points, using the seed spread from the first item."
+      },
+      {
+        "title": "Equal-compute comparison mode",
+        "kind": "training",
+        "ideas": [
+          "idea-2"
+        ],
+        "what": "Add a budget mode that limits each agent by environment steps (or by CPU core-seconds) instead of wall-clock time, and report the comparison under that budget.",
+        "why": "The GA ran on 11 cores at about 255k steps per second and DQN on one core at about 2.3k, so a 10-minute race mostly reflects hardware assignment. The lab's core comparison is currently unfair to learners, and the GA collected 30.8M steps against DQN's 391k in 5 minutes.",
+        "how": "Add a 'budget_type' setting (time or steps) to the training settings and to the limits in the catalog. In the trainer loops for both the GA and DQN, count environment steps as they run and stop at the step cap. Report the step count and the cores used next to each result, so the comparison is clear. The dashboard will show the new option automatically.",
+        "effort": "medium",
+        "first_experiment": "Run GA and DQN with the same rays depth 4 and reward preset, each capped at 391k environment steps, and compare test means with the step counts shown."
+      }
+    ],
+    "later": [
+      {
+        "title": "DQN train-every-N-steps setting",
+        "ideas": [
+          "idea-6"
+        ],
+        "reason": "The evidence comes from one run, and it has to be judged against seed noise, which the seed-spread feature will provide. Its expected gain of a few points is near the noise level, so build it after the seed spread exists, and reconsider it once the equal-compute mode shows how much DQN really loses to step throughput. Once built, it is a small algorithm parameter added to the DQN params in algorithms.py, with a trainer change to update only every N environment steps."
+      }
+    ],
+    "drop": []
+  }
+}

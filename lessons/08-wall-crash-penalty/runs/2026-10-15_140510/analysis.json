@@ -1,0 +1,250 @@
+{
+  "state": "done",
+  "model": "claude-haiku-5-5",
+  "created": "2026-10-15 14:16:18",
+  "seconds": 28.2,
+  "usage": {
+    "model": "claude-haiku-5-5",
+    "prompt_tokens": 18803,
+    "completion_tokens": 5245
+  },
+  "result": {
+    "headline": "Raising the wall penalty to 30 cut GA's wall crashes from 78% to 47% of test games and lifted its test mean to 40.95 (baseline 36.27), but this is one seed.",
+    "summary": "**GA:** The test mean rose to 40.95 (median 40, max 90), up from 36.27 in the baseline run with death_wall 10. Its wall share fell from 78 to 47 games, and body crashes rose from 22 to 51, so the snake now mostly dies by running into itself. Steps per apple barely moved (29 vs 28), so the snake still wanders about as much as before. Its training curve is noisy and still climbing slowly: mean_last_100 went from 1.4 at minute 3 to 15.3 at minute 10, with a plateau around 11 to 16 in the last few minutes. Training ran at about 47k steps/s with 28M env steps total, well below the 66M of the baseline run in the same 10 minutes, so the two GA runs differ in throughput as well as in reward.\n\n**DQN** (deep Q-network, a gradient-based learner that estimates the value of each move): the test mean was 36.54 (baseline 37.56), a change of about 1 point. Its wall crashes fell from 12 to 2 games, while body crashes stayed dominant (98 of 100). Its training mean_last_100 was 21.7, and it reached only 279k env steps in 10 minutes (about 450 steps/s on one core, versus 810k in the baseline), so it saw far less data.",
+    "diagnosis": "The wall penalty acts as a price on one kind of death. Once hitting a wall costs 30 instead of 10, selection favours networks that keep away from walls. Those networks do not become better at avoiding their own tails, so the deaths move to the body (51 body crashes, up from 22). The gain in test mean (+4.7) is consistent with fewer wall deaths, but the steps-per-apple figure is unchanged, so the GA is not navigating more efficiently; it is dying later. Rank-based selection only uses the ordering of games, so the penalty shifts which networks rank highest rather than changing the size of the reward signal.\n\nThe 4.7-point gain is one seed. The lab's own baseline and this run also differ in GA throughput (28M vs 66M env steps), which adds noise. The effect is worth replicating before anyone treats it as real. DQN's small change is expected: it was already dying mostly by body, and the wall penalty mainly affects how the snake trades off walls against its body.",
+    "learned": "Changing one penalty changes which way the agent dies, not just how often it dies: the crash moved from walls to the snake's own body. Always check the crash breakdown and steps per apple along with the score, and replicate a gain on another seed before believing it.",
+    "prediction_check": "Partly held. The wall share fell below 60% (47%) as predicted, and DQN changed little (36.54 vs 37.56). The GA test mean did not stay within 3 points of 36.3; it rose to 40.95, a 4.7-point change."
+  },
+  "recommendations": [
+    {
+      "title": "Replicate the wall-penalty run on seed 1",
+      "why": "The 4.7-point GA gain comes from a single seed, and the run-to-run spread is unknown. A second seed tells us whether the gain is real or training noise.",
+      "change": "Keep every setting from this run and change only the seed from 0 to 1.",
+      "prediction": "GA test mean stays between 36 and 44, and its wall share stays below 60% of test games.",
+      "question": "Does the GA's wall-crash drop and score gain from death_wall 30 hold on a different seed?",
+      "new_lesson": false,
+      "lesson_slug": "08-wall-crash-penalty",
+      "recipe": {
+        "seed": 1
+      },
+      "config": {
+        "lesson": "08-wall-crash-penalty",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "room"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death_wall": 30.0,
+          "death_body": 10.0,
+          "starve": 10.0,
+          "win": 100.0,
+          "potential": 0.1
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 1
+      },
+      "errors": [],
+      "warnings": [
+        "Crashing costs more than an apple is worth, but starving costs less and time is free: the snake may learn to loop until it starves rather than risk a crash. Raise the starvation penalty or add a hunger cost."
+      ],
+      "changes": [
+        "seed 0 \u2192 1"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Raise the body penalty to match",
+      "why": "With the wall penalty at 30, body crashes are now the GA's main way to die (51 of 100 test games). Making both crash types equally costly should test whether the GA can avoid its own body too, which the wall change alone could not do.",
+      "change": "Raise death_body from 10 to 30, keeping death_wall at 30 and the other reward features unchanged.",
+      "prediction": "GA body-crash share falls below 35% of test games, and the GA test mean rises above 42.",
+      "question": "When both crash types cost the same, does the GA's death shift again, or does it finally avoid crashes altogether?",
+      "new_lesson": true,
+      "lesson_slug": "equal-crash-penalties",
+      "recipe": {
+        "reward": {
+          "apple": 10.0,
+          "death_wall": 30.0,
+          "death_body": 30.0,
+          "starve": 10.0,
+          "win": 100.0,
+          "potential": 0.1
+        }
+      },
+      "config": {
+        "lesson": "08-wall-crash-penalty",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "room"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death_wall": 30.0,
+          "death_body": 30.0,
+          "starve": 10.0,
+          "win": 100.0,
+          "potential": 0.1
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [
+        "Crashing costs more than an apple is worth, but starving costs less and time is free: the snake may learn to loop until it starves rather than risk a crash. Raise the starvation penalty or add a hunger cost."
+      ],
+      "changes": [
+        "reward: death_body 10 \u2192 30"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Train the room-vision run for 20 minutes",
+      "why": "The GA's curve was still rising at minute 10, and its training mean varies from 11 to 16 across the last few checkpoints. A longer budget tests whether the score gain is limited by training time rather than by the penalty.",
+      "change": "Raise time_budget_min from 10 to 20, keeping all other settings unchanged.",
+      "prediction": "GA test mean rises above 45, and its wall share stays below 50%.",
+      "question": "Does the GA keep improving with more training time, and does the wall share keep falling?",
+      "new_lesson": true,
+      "lesson_slug": "room-longer-budget",
+      "recipe": {
+        "time_budget_min": 20.0
+      },
+      "config": {
+        "lesson": "08-wall-crash-penalty",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "room"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death_wall": 30.0,
+          "death_body": 10.0,
+          "starve": 10.0,
+          "win": 100.0,
+          "potential": 0.1
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          },
+          {
+            "id": "dqn",
+            "algorithm": "dqn",
+            "params": {
+              "lr": 0.001,
+              "gamma": 0.95,
+              "batch": 256,
+              "buffer": 100000,
+              "eps_decay_steps": 100000,
+              "target_sync": 500,
+              "envs": 8,
+              "eval_every": 20000
+            }
+          }
+        ],
+        "time_budget_min": 20.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [
+        "Crashing costs more than an apple is worth, but starving costs less and time is free: the snake may learn to loop until it starves rather than risk a crash. Raise the starvation penalty or add a hunger cost."
+      ],
+      "changes": [
+        "training time (min) 10 \u2192 20"
+      ],
+      "launched": []
+    }
+  ],
+  "recommended": 0,
+  "ideas": [
+    {
+      "id": "idea-16",
+      "title": "Crash-type share over training",
+      "kind": "dashboard",
+      "what": "Plot the wall, body, starved and won shares of training games against env steps, so learners can see when a snake starts avoiding walls and whether its deaths move to the body.",
+      "why": "The test table shows the crash shift only at the end. The training curves show a single mean, so we cannot tell whether the wall share fell gradually or changed suddenly.",
+      "expected": "Makes the moment the wall share falls visible in each run, e.g. the shift in this run should appear by about minute 3 to 5 if it tracks the learning curve.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-15 14:16:18",
+      "source": {
+        "run": "08-wall-crash-penalty/2026-10-15_140510",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    }
+  ]
+}

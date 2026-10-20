@@ -1,0 +1,1 @@
+{"generation": 201, "fitness": 771.4099999999993, "hidden": 16, "mean_score": 69.33333333333333, "width": 10, "height": 10, "vision": {"type": "room"}, "reward": {"apple": 10.0, "death_wall": 10.0, "death_body": 10.0, "starve": 10.0, "win": 100.0, "potential": 0.1}}

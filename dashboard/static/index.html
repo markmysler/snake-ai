@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Snake AI Lab</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='1' y='6' width='4' height='4' rx='1' fill='%232a78d6'/%3E%3Crect x='6' y='6' width='4' height='4' rx='1' fill='%232a78d6'/%3E%3Crect x='11' y='6' width='4' height='4' rx='1' fill='%23e34948'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/vendor/chart.umd.min.js"></script>
+  <script src="/static/vendor/marked.min.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><span class="logo"><i></i><i></i><i></i></span>Snake AI lab</div>
+    <span class="machine" id="machine" title="Detected on the machine running the dashboard"></span>
+    <nav class="tabs" aria-label="Sections">
+      <a href="#runs" data-tab="runs">Runs <span class="count" id="count-runs"></span></a>
+      <a href="#new" data-tab="new">New run</a>
+      <a href="#watch" data-tab="watch">Watch <span class="count" id="count-live"></span></a>
+      <a href="#compare" data-tab="compare">Compare <span class="count" id="count-compare"></span></a>
+      <a href="#best" data-tab="best">Best</a>
+      <a href="#ideas" data-tab="ideas">Ideas <span class="count" id="count-ideas"></span></a>
+      <a href="#learn" data-tab="learn">Learn</a>
+    </nav>
+  </div>
+</header>
+<main id="main"></main>
+<dialog id="dialog"><div class="dlg" id="dialog-body"></div></dialog>
+<script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

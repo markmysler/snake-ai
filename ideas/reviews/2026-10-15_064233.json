@@ -1,0 +1,57 @@
+{
+  "state": "done",
+  "name": "2026-10-15_064233",
+  "model": "claude-haiku-5-5",
+  "created": "2026-10-15 06:42:33",
+  "seconds": 15.9,
+  "usage": {
+    "model": "claude-haiku-5-5",
+    "prompt_tokens": 5532,
+    "completion_tokens": 2846
+  },
+  "ideas_reviewed": 4,
+  "result": {
+    "summary": "All four ideas aim at the same weakness: the lab's test table gives one number per agent, so learners cannot tell whether a result is a real effect, a seed accident, a looping artifact, or a hardware-budget difference. The most valuable next step is to record and display how each test game ended (crash, starvation, or board filled) and its step count for every run, including older ones, because that is cheap and lets learners verify the claims already made in the lessons. Multi-seed spread comes next, since the lesson 03 conclusions currently rest on one seed.",
+    "build_next": [
+      {
+        "title": "Per-game outcome and steps in the test results, backfilled for every run",
+        "kind": "evaluation",
+        "ideas": [
+          "idea-1",
+          "idea-4"
+        ],
+        "what": "For every test game, record how it ended (crashed, starved, or filled the board) and how many steps it took. Show, per agent, the share of games ending in each way next to the mean steps per game. Backfill this for older runs by replaying their saved checkpoints on the same test games where possible.",
+        "why": "The scratch run's GA averaged 1,937 steps per test game, which suggests looping until starvation, but that run has no test-game statistics, so the claim cannot be checked. Where the metric exists, it is already informative (543 steps for the GA and 236 for DQN in run 03). Idea-1 and idea-4 both need the same stored per-game data, so they are one change.",
+        "how": "Extend the test-game loop in the evaluation code that writes test_mean so it also saves each game's end reason and step count into the run's results file. Keep the new fields optional so old result files still load. Add a small backfill script that replays saved checkpoints for runs that lack the fields. In the dashboard, add a column group for end-cause shares and mean steps beside test_mean; it appears automatically once the setting is in the results schema.",
+        "effort": "small",
+        "first_experiment": "Re-run the scratch recipe (rays depth 4, survival 0.1) with the new logging, then compare its GA's starvation share and steps per game with the run 03 GA that has survival removed. Check whether the wandering claim holds."
+      },
+      {
+        "title": "Seed spread for each recipe, shown as a range",
+        "kind": "dashboard",
+        "ideas": [
+          "idea-3"
+        ],
+        "what": "Let a recipe run across several seeds and show each agent's test mean as a range or error bar. Mark a difference as real only when the gap is larger than the seed-to-seed spread.",
+        "why": "Run 03's headline (GA 33.95 against an earlier 15.99 for a similar recipe) rests on one seed, and the DQN change of +0.94 is noise that the dashboard cannot show. Learners currently cannot tell real effects from luck, which affects every lesson.",
+        "how": "Add a seeds setting (for example 1 to 10, default 1) to the run configuration. In the trainer script, loop over seeds and write one result per seed under the same run group. In the dashboard, group results by agent and show the mean with min to max (or mean plus or minus one standard deviation). Default to 1 seed so existing runs and the quick path are unchanged, and add a short note explaining the spread.",
+        "effort": "medium",
+        "first_experiment": "Run the run 03 recipe with 5 seeds for both GA and DQN. Check whether the GA's gap over the earlier run lies outside the seed spread, and whether DQN's +0.94 change sits well inside it."
+      },
+      {
+        "title": "Equal-budget comparison mode for GA and DQN",
+        "kind": "training",
+        "ideas": [
+          "idea-2"
+        ],
+        "what": "Offer a budget mode that gives each algorithm the same number of environment steps (or the same CPU cores) instead of the same wall-clock time, and report the comparison with that budget shown.",
+        "why": "The GA ran on 11 cores at about 255k steps per second and DQN on one core at about 2.3k, so a 10-minute race mostly measures hardware. This is a clear, large confound, but it is backed by one run only, so it is ranked after the two items that check existing claims.",
+        "how": "Add a budget_mode setting (time or env_steps) next to time_budget_min in the run configuration. In env_steps mode, count the steps used by all population members in the GA loop and by the environment in the DQN loop, and stop each at the same total. Report the budget used in the results. The dashboard shows it automatically once it is in the schema. Keep the core count the same across both in a separate option if a core-matched mode is wanted.",
+        "effort": "medium",
+        "first_experiment": "Give the GA and DQN each 2 million environment steps on the run 03 recipe, with the same reward and vision, and compare test means. Check whether DQN's lead from the 10-minute race holds."
+      }
+    ],
+    "later": [],
+    "drop": []
+  }
+}

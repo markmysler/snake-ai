@@ -1,0 +1,232 @@
+{
+  "state": "done",
+  "model": "claude-haiku-5-5",
+  "created": "2026-10-15 14:30:50",
+  "seconds": 36.5,
+  "usage": {
+    "model": "claude-haiku-5-5",
+    "prompt_tokens": 17411,
+    "completion_tokens": 6933
+  },
+  "result": {
+    "headline": "With 10 games per genome the GA reached a test mean of 22.24 in 5 minutes, with all 100 test games ending in body collisions. That is below the 3-game room baseline (36.27 at 10 minutes), but this is one seed on battery power.",
+    "summary": "The GA (genetic algorithm, which evolves a population of networks without gradients) ran 39 generations in 5.1 minutes, using 78,000 games and 17.9M env steps. Its test score was 22.24 (median 22, max 30). Every test game ended by the snake running into its own body (100 of 100), with 529 steps per game and 24 steps per apple. The snake eats steadily but traps itself, so the room vision's flood-fill warning about boxing itself in did not prevent body deaths here.\n\nThe training curve rose from a best single game of 3 to 33, with no clear late decline. The logged mean_last_100 went from 0.1 to 0.56, but that number does not match the score scale: the best game is 33 and the test mean is 22, so the logged mean appears to measure something else. Treat that column with caution until the logging is checked. The machine was on battery and ran at about 59k steps per second. The earlier 3-game GA runs managed roughly 220k to 300k, so this run got far fewer generations than the speed comparison suggests.",
+    "diagnosis": "The lesson asked whether the late decline came from noisy fitness with only 3 games per genome. This run cannot settle that. There is no 3-game curve from the same conditions, and the parent run's curve is not in the data. Raising games per genome from 3 to 10 costs roughly three times the steps per generation, so at a fixed 5-minute budget it trades generations for more reliable rankings. The result, 22.24 at 5 minutes, sits below the 3-game room run at 10 minutes (36.27). That fits the budget trade-off, but the battery slowdown and single seed also contribute, so the gap is not clean evidence against 10 games.\n\nThe body-crash result points at the reward. All three crash penalties are 10, so a body crash costs the same as a wall crash, and the GA learned to avoid walls but not its own tail. Lesson 05 showed that raising the death penalty shifts GA deaths toward walls, which suggests the crash types are sensitive to how they are weighted.",
+    "learned": "Better fitness estimates (more games per genome) only help if the budget can still produce enough generations; compare runs at equal time and watch the steps per second, because a slow machine can hide the effect. A single test score on one seed can shift a lot.",
+    "prediction_check": "Partly held: the run took 39 generations (predicted 35 to 40) and the test mean of 22.24 fell in the predicted 18 to 28 range, but the training mean did not rise to 15 or more (it ended at 0.56, on a scale that may not be comparable)."
+  },
+  "recommendations": [
+    {
+      "title": "Rerun with 3 games per genome",
+      "why": "This is the clean control for the lesson's question: same reward, vision and 5-minute budget, with only the games per genome changed. It tells us whether 10 games beat 3 at equal time, rather than comparing against a run with a different reward.",
+      "change": "Set the GA's games per genome back from 10 to 3; keep everything else, including the 5-minute budget.",
+      "prediction": "About three times as many generations (roughly 110 to 120), and a test mean of 25 to 35. The gap to 22.24 will be within the range we would expect from seed noise.",
+      "question": "At an equal 5-minute budget, does 10 games per genome give a better test score than 3 games?",
+      "new_lesson": false,
+      "lesson_slug": "09-ga-games-per-genome",
+      "recipe": {
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "games": 3
+            }
+          }
+        ]
+      },
+      "config": {
+        "lesson": "09-ga-games-per-genome",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "room"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death_wall": 10.0,
+          "death_body": 10.0,
+          "starve": 10.0,
+          "win": 100.0,
+          "potential": 0.1,
+          "hunger": 0.01
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 3,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          }
+        ],
+        "time_budget_min": 5.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "ga games 10 \u2192 3"
+      ],
+      "launched": [
+        "09-ga-games-per-genome/2026-10-15_143223"
+      ]
+    },
+    {
+      "title": "Give the GA a 10-minute budget",
+      "why": "The best single game was still rising at the end of the run (33 at generation 39), so the 10-game GA may simply need more generations. Doubling the time tests whether budget, not fitness noise, is the limit.",
+      "change": "Raise the time budget from 5 to 10 minutes; keep 10 games per genome and all other settings.",
+      "prediction": "About 80 generations and a test mean of 30 to 38, close to the 3-game room run's 36.27 at 10 minutes.",
+      "question": "Is the 10-game GA limited by the number of generations it can run in the time budget?",
+      "new_lesson": true,
+      "lesson_slug": "ga-games-longer-budget",
+      "recipe": {
+        "time_budget_min": 10.0
+      },
+      "config": {
+        "lesson": "09-ga-games-per-genome",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "room"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death_wall": 10.0,
+          "death_body": 10.0,
+          "starve": 10.0,
+          "win": 100.0,
+          "potential": 0.1,
+          "hunger": 0.01
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 10,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          }
+        ],
+        "time_budget_min": 10.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "training time (min) 5 \u2192 10"
+      ],
+      "launched": []
+    },
+    {
+      "title": "Penalise body crashes at 30",
+      "why": "All 100 test games ended in body collisions, so the body penalty is the weakest link. Raising only the body penalty (and keeping the wall penalty at 10) tests whether the GA avoids its own tail when that mistake costs more.",
+      "change": "Set the body crash penalty (death_body) to 30 while keeping the wall penalty at 10.",
+      "prediction": "Body-collision share falls below 60% of test games, and some crashes move to walls. The test mean stays between 20 and 28.",
+      "question": "Does weighting body crashes more heavily change how the GA dies, and does it improve the score?",
+      "new_lesson": true,
+      "lesson_slug": "ga-body-death-penalty",
+      "recipe": {
+        "reward": {
+          "apple": 10.0,
+          "death_wall": 10.0,
+          "death_body": 30.0,
+          "starve": 10.0,
+          "win": 100.0,
+          "potential": 0.1,
+          "hunger": 0.01
+        }
+      },
+      "config": {
+        "lesson": "09-ga-games-per-genome",
+        "name": "",
+        "note": "",
+        "vision": {
+          "type": "room"
+        },
+        "reward": {
+          "apple": 10.0,
+          "death_wall": 10.0,
+          "death_body": 30.0,
+          "starve": 10.0,
+          "win": 100.0,
+          "potential": 0.1,
+          "hunger": 0.01
+        },
+        "agents": [
+          {
+            "id": "ga",
+            "algorithm": "ga",
+            "params": {
+              "population": 200,
+              "games": 10,
+              "elite_frac": 0.1,
+              "tournament": 3,
+              "mutation_rate": 0.1,
+              "mutation_sigma": 0.2
+            }
+          }
+        ],
+        "time_budget_min": 5.0,
+        "width": 10,
+        "height": 10,
+        "seed": 0
+      },
+      "errors": [],
+      "warnings": [],
+      "changes": [
+        "reward: death_body 10 \u2192 30"
+      ],
+      "launched": []
+    }
+  ],
+  "recommended": 0,
+  "ideas": [
+    {
+      "id": "idea-19",
+      "title": "Warn when the machine is on battery",
+      "kind": "dashboard",
+      "what": "Show a warning on the run page when the machine is on battery, and display the steps per second next to each run's expected range for its algorithm and inputs, so slow runs are flagged before they are compared.",
+      "why": "This run ran at about 59k steps per second, while comparable 3-game GA runs managed 220k to 300k. Its generation count and score are therefore hard to compare with other runs, and nothing on the page explained why.",
+      "expected": "Learners would see slowdowns at a glance, which would avoid misreading generation counts as a measure of the algorithm.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-15 14:30:50",
+      "source": {
+        "run": "09-ga-games-per-genome/2026-10-15_142501",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    },
+    {
+      "id": "idea-20",
+      "title": "Check the GA's training mean scale",
+      "kind": "evaluation",
+      "what": "Verify how the GA's mean_last_100 is computed and make it match the test score's units (or label it clearly), so the training curve can be compared with the test mean.",
+      "why": "The logged GA training mean ended at 0.56, while the best game was 33 and the test mean was 22. The prediction and the lesson's note both assumed a training mean of 15 or more, so the curve as logged cannot be read against the test score.",
+      "expected": "Training and test scores would be directly comparable, letting learners judge overfitting and the late-decline question from the curve alone.",
+      "effort": "small",
+      "status": "new",
+      "created": "2026-10-15 14:30:50",
+      "source": {
+        "run": "09-ga-games-per-genome/2026-10-15_142501",
+        "model": "claude-haiku-5-5"
+      },
+      "review": null
+    }
+  ]
+}
