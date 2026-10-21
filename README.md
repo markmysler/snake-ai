@@ -3,11 +3,17 @@
 [![CI](https://github.com/markmysler/snake-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/markmysler/snake-ai/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Live demo](https://img.shields.io/badge/demo-live-2a78d6.svg)](https://markmysler.github.io/snake-ai/)
+[![Video](https://img.shields.io/badge/video-4%20min-e34948.svg)](https://youtu.be/1bu1y4cJJmA)
 
 A learning project and a small lab: neural networks learn to play Snake, and you can watch them do it. You decide what each snake **sees**, how it is **rewarded**, and which **algorithm** learns. Every run is saved with its exact recipe, so anyone can repeat it, change one thing, and compare.
 
 **Try it without installing anything:** the [live demo](https://markmysler.github.io/snake-ai/) has the whole trained
 course: watch the snakes, inspect their games move by move, compare runs and read the lessons (read-only).
+
+**Or watch the four-minute explainer** first: what a snake sees, how evolution and Q-learning learn from it, and what the
+course found.
+
+<p align="center"><a href="https://youtu.be/1bu1y4cJJmA"><img src="docs/img/video.jpg" alt="Video: How do machines learn to play Snake? Evolution vs Q-learning (YouTube, 3:44)" width="720"></a></p>
 
 <p align="center"><img src="docs/img/boards.gif" alt="Three trained snakes playing side by side: a genetic algorithm and two DQN agents" width="720"></p>
 
