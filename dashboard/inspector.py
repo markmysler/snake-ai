@@ -50,9 +50,9 @@ class Game:
             env = self.seek(step)
             obs = np.asarray(self.state, dtype=np.float32)
             last = step == len(self.actions)
-            policy = self.act.__self__
-            raw = policy.scores(obs, step) if isinstance(policy, Replay) else scores_of(self.act)(obs)
-            out = None if last else [round(float(v), 4) for v in raw]
+            policy = getattr(self.act, "__self__", None)
+            out = None if last else [round(float(v), 4) for v in (  # after the last move there is no decision
+                policy.scores(obs, step) if isinstance(policy, Replay) else scores_of(self.act)(obs))]
             return {"step": step, "moves": len(self.actions), "end": self.end if last else None,
                     "snake": [list(c) for c in env.snake], "food": list(env.food) if env.food is not None else None,
                     "direction": env.direction, "score": env.score,

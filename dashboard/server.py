@@ -69,6 +69,10 @@ def create_app(parallel=1, read_only=False):
             return await call_next(request)
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
+    def llm_status():  # a demo can't analyse, so it never offers to
+        s = llm.status()
+        return {**s, "configured": s["configured"] and not read_only}
+
     def find(run_id):
         info = hub.infos.get(run_id)
         if info is None:
@@ -88,7 +92,7 @@ def create_app(parallel=1, read_only=False):
         return {"visions": [v.info() for v in visions.VISIONS.values()], "rewards": rewards.catalog(),
                 "algorithms": algorithms.catalog(), "defaults": runconfig.normalize({}),
                 "lessons": [{"name": n, "title": lessons.lesson_title(n)} for n in lessons.lessons()],
-                "llm": {**llm.status(), "configured": llm.status()["configured"] and not read_only},
+                "llm": llm_status(),
                 "glossary": glossary.entries(), "course": course.payload(), "read_only": read_only}
 
     @app.get("/api/system")
@@ -194,7 +198,7 @@ def create_app(parallel=1, read_only=False):
     @app.get("/api/analysis")
     def get_analysis(id: str):
         info = find(id)
-        return {"id": id, "llm": llm.status(), "analysis": analysis.payload(info["id"])}
+        return {"id": id, "llm": llm_status(), "analysis": analysis.payload(info["id"])}
 
     @app.post("/api/analysis")
     def start_analysis(id: str):
@@ -229,7 +233,7 @@ def create_app(parallel=1, read_only=False):
     @app.get("/api/ideas")
     def get_ideas(review: str | None = None):
         return {"ideas": ideas.load(), "review": ideas.read_review(review), "reviews": ideas.reviews(),
-                "llm": llm.status(), "statuses": ideas.STATUSES, "kinds": ideas.KINDS}
+                "llm": llm_status(), "statuses": ideas.STATUSES, "kinds": ideas.KINDS}
 
     @app.patch("/api/idea")
     def edit_idea(id: str, body: dict = Body(...)):

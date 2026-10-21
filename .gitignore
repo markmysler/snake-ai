@@ -1,4 +1,7 @@
 __pycache__/
+
+# Private notes and tools (not part of the lab)
+/.context/
 .pytest_cache/
 *.tmp
 
@@ -17,3 +20,6 @@ __pycache__/
 # Trainer output of recorded runs (large and machine-specific)
 lessons/*/runs/*/logs/
 ideas/*.log
+
+# The static demo (tools/export_site.py; GitHub Pages builds its own)
+/site/

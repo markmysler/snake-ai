@@ -2,8 +2,12 @@
 
 [![CI](https://github.com/markmysler/snake-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/markmysler/snake-ai/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Live demo](https://img.shields.io/badge/demo-live-2a78d6.svg)](https://markmysler.github.io/snake-ai/)
 
 A learning project and a small lab: neural networks learn to play Snake, and you can watch them do it. You decide what each snake **sees**, how it is **rewarded**, and which **algorithm** learns. Every run is saved with its exact recipe, so anyone can repeat it, change one thing, and compare.
+
+**Try it without installing anything:** the [live demo](https://markmysler.github.io/snake-ai/) has the whole trained
+course: watch the snakes, inspect their games move by move, compare runs and read the lessons (read-only).
 
 <p align="center"><img src="docs/img/boards.gif" alt="Three trained snakes playing side by side: a genetic algorithm and two DQN agents" width="720"></p>
 
@@ -250,6 +254,19 @@ server refuses anything that changes the lab (launching, editing, deleting, anal
 the dashboard hides those buttons and this machine's details. A good way to share the trained course, e.g. on a small
 server or a Hugging Face Space.
 
+**Without a server** (GitHub Pages, Vercel, Netlify, any static host):
+
+```bash
+python tools/export_site.py            # writes site/: the dashboard + the server's answers as files (~45 MB)
+python -m http.server -d site 8080     # try it: http://127.0.0.1:8080
+npx vercel deploy site --prod          # e.g. on Vercel (or drag site/ onto Netlify)
+```
+
+The export asks the real read-only server for every answer, so the site shows the same thing. What the server would
+compute on demand is computed once: each snake gets three replay games with fixed seeds, recorded move by move for
+Inspect (gzipped; the browser unpacks them). The [live demo](https://markmysler.github.io/snake-ai/) is built this way by
+`.github/workflows/pages.yml` on every push to `main` (one-time setup: *Settings > Pages > Source: GitHub Actions*).
+
 ## Lessons: the course and the notebook
 
 [`lessons/`](lessons/README.md) is where all of it is kept. Each lesson asks one question. It holds:
@@ -441,6 +458,7 @@ dashboard (FastAPI) ──queue──> experiment.py ──> train_ga.py / train
 | `dashboard/server.py`, `hub.py`, `jobs.py`, `store.py`, `replay.py`, `inspector.py` | API + SSE, run list and watchers, the run queue, live/saved weights, compact replay games, Inspect's move-by-move frames |
 | `dashboard/static/` | plain HTML + canvas + Chart.js: `app.js` (tabs), `views/` (runs, new run, watch, compare, best, ideas, learn), `components/` (board, inspector, line chart, endings chart, seed spread, glossary, playback, population) |
 | `tools/screenshots.py` | the README images, re-shot from the running dashboard |
+| `tools/export_site.py` | the read-only demo as a static site (GitHub Pages, Vercel...) |
 | `.github/workflows/ci.yml` | tests on Linux, Windows and macOS (Python 3.10 and 3.13) and in the Docker image |
 
 ## Roadmap

@@ -2,7 +2,7 @@
 //   #runs   #new[/<run id to copy>]   #watch[/<run id>]   #compare[/<id>,<id>,<id>]   #best   #ideas[/<idea id>]
 //   #learn[/<term id>]
 import { setGlossary } from "./components/glossary.js";
-import { api, fmtMB, q } from "./util.js";
+import { api, fmtMB, q, SITE } from "./util.js";
 import * as bestView from "./views/best.js";
 import * as compareView from "./views/compare.js";
 import * as ideasView from "./views/ideas.js";
@@ -45,8 +45,14 @@ export const app = {
     if (this.es && this.esRun === runId) return;
     this.es?.close();
     this.esRun = runId;
-    this.es = new EventSource("/api/events" + (runId ? `?run=${q(runId)}` : ""));
-    const on = (ev, fn) => this.es.addEventListener(ev, (e) => fn(JSON.parse(e.data)));
+    const path = "/api/events" + (runId ? `?run=${q(runId)}` : "");
+    const handlers = {};
+    const on = (ev, fn) => { handlers[ev] = fn; this.es.addEventListener?.(ev, (e) => fn(JSON.parse(e.data))); };
+    if (SITE) {  // the static demo: everything is finished, so the first message is the only one
+      this.es = { close() { this.closed = true; } };
+      const es = this.es;
+      api.get(path).then((d) => { if (!es.closed) handlers.init(d); });
+    } else this.es = new EventSource(path);
     on("init", (d) => {
       this.runs = d.runs; this.queue = d.queue; this.system = d.system;
       updateChrome();
@@ -82,7 +88,6 @@ function parseHash() {
 function render() {
   const { tab, param } = parseHash();
   if (app.catalog?.read_only && tab === "new") { location.hash = "#runs"; return; }  // nothing can be launched
-  if (app.catalog?.read_only && tab === "new") { location.hash = "#runs"; return; }  // nothing can be launched
   app.view?.unmount?.();
   const main = document.getElementById("main");
   main.replaceChildren();
@@ -102,10 +107,6 @@ window.addEventListener("hashchange", render);
 (async () => {
   app.catalog = await api.get("/api/catalog");
   setGlossary(app.catalog.glossary);
-  if (app.catalog.read_only) {  // a shared demo: every button that changes something is hidden (data-write)
-    document.body.classList.add("read-only");
-    document.getElementById("demo-badge").hidden = false;
-  }
   if (app.catalog.read_only) {  // a shared demo: every button that changes something is hidden (data-write)
     document.body.classList.add("read-only");
     document.getElementById("demo-badge").hidden = false;

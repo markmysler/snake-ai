@@ -65,6 +65,8 @@ def test_a_run_plays_the_test_games_and_replays_exactly(tmp_path, monkeypatch):
         assert (shown["score"], shown["steps"]) == (g["score"], g["steps"])
         frame = Game(policy.for_seed(g["seed"]).act, meta, g["seed"]).frame(1)
         assert frame["action"] == g["actions"][1] and max(frame["out"]) == pytest.approx(-0.2231, abs=1e-3)  # log 0.8
+        last = Game(policy.for_seed(g["seed"]).act, meta, g["seed"]).frame(g["steps"])  # after its last move
+        assert last["out"] is None and last["end"] is not None
 
 
 def test_spending_cap_stops_the_run(tmp_path, monkeypatch):

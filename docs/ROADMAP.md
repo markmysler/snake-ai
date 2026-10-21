@@ -108,5 +108,9 @@ reported fact into felt experience.
 - **A CNN for the picture visions**: DQN's *Network* setting (`mlp` or `conv`), validated against the vision. Notebook
   lesson 10 compares the two on the whole board.
 - **Read-only demo mode**: `--read-only` refuses every change (403) and the dashboard hides those buttons.
+- **The demo as a static site** (`tools/export_site.py`, deployed to GitHub Pages by `.github/workflows/pages.yml`):
+  the read-only server's answers saved as files, three replay games per snake with every move recorded for Inspect
+  (gzipped, about 45 MB in all). Decided: a static export rather than a hosted server, because the replays need PyTorch,
+  which is too big for serverless hosts like Vercel; the same folder works on any static host.
 - Responsiveness pass: every view checked from 320 to 1920 px wide, light and dark, with no sideways scrolling; the run
   tables become cards on phones.

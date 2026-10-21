@@ -92,7 +92,8 @@ export function mount(main, runId, app) {
           h("b", {}, fmtNum(ev.steps_per_apple, 0)), " per apple")) : null,
         outcomeBar(ev),
         !last && run.status !== "finished" ? h("div", { class: "sub" }, "warming up…") : null);
-    })), anyOutcomes ? h("div", { class: "btn-row small muted" }, "How the 100 test games ended:", outcomeLegend(), info("c.game-end")) : null);
+    })), anyOutcomes ? h("div", { class: "btn-row small muted" }, `How the ${new Set(run.agents.map((a) => run.evaluation[a.id]?.games ?? 100)).size === 1
+      ? `${run.evaluation[run.agents[0].id]?.games ?? 100} ` : ""}test games ended:`, outcomeLegend(), info("c.game-end")) : null);
   }
 
   // A run trained as one of a seed group: where its test score sits among the same recipe's other seeds.
@@ -301,6 +302,7 @@ export function mount(main, runId, app) {
     if (["queued", "running"].includes(run.status)) return null;
     const llm = app.catalog?.llm || {};
     const st = run.analysis?.state, a = st === "done" && ai.key === aiKey(run) ? ai.data : null;
+    if (app.catalog?.read_only && st !== "done") return null;  // a demo can't analyse: only show finished analyses
     if (aiKey(run) !== ai.key) queueMicrotask(() => loadAnalysis(run));
     const head = (sub, ...right) => h("div", { class: "section-head" },
       h("div", {}, h("h2", {}, "AI analysis"), sub ? h("p", {}, sub) : null), h("div", { class: "btn-row" }, right));
@@ -309,7 +311,7 @@ export function mount(main, runId, app) {
     if (st === "running") {
       add(head(null), h("p", { class: "ink2 working" }, h("i", { class: "dot" }),
         `${run.analysis.model || "The model"} is reading this run's settings, learning curves and test games… usually under a minute.`));
-    } else if (!llm.configured) {
+    } else if (!llm.configured && st !== "done") {  // an analysis made earlier is still shown
       add(head("Get an explanation of this run and suggested next experiments."),
         h("p", { class: "small muted" }, "Not set up: add a TokenRouter or OpenRouter API key to a .env file "
           + "(see .env.example), then restart the dashboard."));

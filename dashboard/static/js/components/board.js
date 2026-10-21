@@ -1,7 +1,7 @@
 // One replay board: fetches a whole game from the server, animates it locally.
 // Weights can only change between games (each game is fetched with the newest or the frozen
 // version), so behaviour never changes mid-game.
-import { h } from "../util.js";
+import { api, h } from "../util.js";
 
 const MAX_MOVES_PER_FRAME = 40; // "max" speed
 const NEW_BEST_MS = 2500;
@@ -56,8 +56,7 @@ export class Board {
     if (pinned) p.set("version", pinned);
     let data = null;
     try {
-      const res = await fetch("/api/game?" + p);
-      if (res.ok) data = await res.json();
+      data = await api.get("/api/game?" + p);
     } catch (e) { /* retried below */ }
     if (token !== this.token) return; // restarted or removed meanwhile
     this.loading = false;

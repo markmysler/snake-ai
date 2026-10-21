@@ -109,7 +109,52 @@ export function confirmDialog(title, text, okLabel = "Delete") {
 }
 
 // ---- API ----
+// The static demo (GitHub Pages, Vercel...) has no server: tools/export_site.py saved its GET answers as files
+// under data/, and computed a few replay games per snake (each one recorded move by move for Inspect).
+export const SITE = Boolean(window.SNAKE_SITE);
+const siteFiles = new Map();
+
+function siteFile(rel) {
+  if (!siteFiles.has(rel)) {
+    siteFiles.set(rel, (async () => {
+      const res = await fetch(`data/${rel.split("/").map(encodeURIComponent).join("/")}`);
+      if (!res.ok) throw new Error(res.status === 404 ? "Not part of this demo." : `${res.status} ${res.statusText}`);
+      let bytes = new Uint8Array(await res.arrayBuffer());
+      if (bytes[0] === 0x1f && bytes[1] === 0x8b) {  // gzip (unless the host already unpacked it on the way)
+        bytes = new Uint8Array(await new Response(new Blob([bytes]).stream()
+          .pipeThrough(new DecompressionStream("gzip"))).arrayBuffer());
+      }
+      return JSON.parse(new TextDecoder().decode(bytes));
+    })());
+    siteFiles.get(rel).catch(() => siteFiles.delete(rel));  // a failed fetch may be retried
+  }
+  return siteFiles.get(rel);
+}
+
+async function siteGet(path) {
+  const url = new URL(path, location.href), p = url.searchParams;
+  switch (url.pathname) {
+    case "/api/catalog": return siteFile("catalog.json");
+    case "/api/runs": return siteFile("runs.json");
+    case "/api/events": return siteFile(p.get("run") ? `watch/${p.get("run")}.json` : "events.json");
+    case "/api/ideas": return siteFile(p.get("review") ? `ideas/${p.get("review")}.json` : "ideas.json");
+    case "/api/lesson": return siteFile(`lesson/${p.get("name")}.json`);
+    case "/api/history": return siteFile(`history/${p.get("id")}.json`);
+    case "/api/analysis": return siteFile(`analysis/${p.get("id")}.json`);
+    case "/api/game": {  // one of the snake's recorded replay games, at random
+      const games = await siteFile(`game/${p.get("run")}/${p.get("agent")}.json`);
+      return games[Math.floor(Math.random() * games.length)];
+    }
+    case "/api/frame": {
+      const g = await siteFile(`frame/${p.get("run")}/${p.get("agent")}/${p.get("seed")}.json.gz`);
+      return { ...g.frames[Math.max(0, Math.min(+p.get("step") || 0, g.frames.length - 1))], info: g.info };
+    }
+  }
+  throw new Error("This is a read-only demo: nothing can be launched, edited or deleted. Install the lab to train your own snakes.");
+}
+
 async function call(method, path, body) {
+  if (SITE) return method === "GET" ? siteGet(path) : siteGet("/api/read-only");
   const res = await fetch(path, {
     method, headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
