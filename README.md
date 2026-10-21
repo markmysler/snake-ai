@@ -10,11 +10,6 @@ A learning project and a small lab: neural networks learn to play Snake, and you
 **Try it without installing anything:** the [live demo](https://markmysler.github.io/snake-ai/) has the whole trained
 course: watch the snakes, inspect their games move by move, compare runs and read the lessons (read-only).
 
-**Or watch the four-minute explainer** first: what a snake sees, how evolution and Q-learning learn from it, and what the
-course found.
-
-<p align="center"><a href="https://youtu.be/1bu1y4cJJmA"><img src="docs/img/video.jpg" alt="Video: How do machines learn to play Snake? Evolution vs Q-learning (YouTube, 3:44)" width="720"></a></p>
-
 <p align="center"><img src="docs/img/boards.gif" alt="Three trained snakes playing side by side: a genetic algorithm and two DQN agents" width="720"></p>
 
 - **Two training algorithms:** a genetic algorithm (evolution, numpy) and Deep Q-learning (PyTorch), with an MLP or a small
@@ -33,6 +28,13 @@ course found.
 - **A nine-lesson course** (`course.py`): one question and one change per lesson, every recipe trained with 3 seeds, with exercises to try next.
 - **Adapts to any machine:** it measures CPU cores and RAM and plans each run's workers, threads and memory to fit.
 - **AI analysis (optional):** an LLM explains what a run did and why, writes it into the lesson, and suggests next runs. The recommended run starts with one click. Ideas that need new code are collected in an Ideas list and reviewed together.
+
+## The explainer video
+
+New here? This four-minute video shows what a snake sees, how evolution and Q-learning learn from it, and what the
+course found.
+
+<p align="center"><a href="https://youtu.be/1bu1y4cJJmA"><img src="docs/img/video.jpg" alt="Video: How do machines learn to play Snake? Evolution vs Q-learning (YouTube, 3:44)" width="560"></a></p>
 
 ## First 15 minutes
 
